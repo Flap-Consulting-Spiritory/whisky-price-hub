@@ -38,7 +38,7 @@ def _now_iso() -> str:
 def _compute_price_flag(client_ask: Optional[float], wb_avg: Optional[float]) -> str:
     if wb_avg is None:
         return "no_wb_price"
-    if client_ask is None:
+    if not client_ask:  # None or 0.0 (no active ask price)
         return "no_client_price"
     diff = (wb_avg - client_ask) / client_ask
     if diff > 0.01:

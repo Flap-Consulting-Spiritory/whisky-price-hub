@@ -41,6 +41,8 @@ class BottleResult(BaseModel):
     wb_scrape_status: str
     wb_scraped_at: Optional[str] = None
     error_message: Optional[str] = None
+    client_ask_price: Optional[float] = None
+    price_flag: Optional[str] = None
 
 
 class ResultsResponse(BaseModel):

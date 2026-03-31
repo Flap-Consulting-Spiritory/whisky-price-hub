@@ -56,6 +56,16 @@ async def startup():
     loop = asyncio.get_running_loop()
     jobs_store.set_loop(loop)
     print("[WhiskyPriceHub] Database initialized. Event loop stored.")
+    # Recover stale jobs: any job still 'running' or 'pending' at startup was
+    # interrupted by a server restart — mark them as failed so they don't block.
+    from database import get_db
+    async for db in get_db():
+        await db.execute(
+            "UPDATE jobs SET status='failed', finished_at=datetime('now') "
+            "WHERE status IN ('running', 'pending')"
+        )
+        await db.commit()
+    print("[WhiskyPriceHub] Stale running/pending jobs marked as failed.")
 
 
 @app.get("/health")

@@ -33,6 +33,8 @@ def _row_to_result(row) -> dict:
         "wb_scrape_status": row["wb_scrape_status"],
         "wb_scraped_at": row["wb_scraped_at"],
         "error_message": row["error_message"],
+        "client_ask_price": row["client_ask_price"],
+        "price_flag": row["price_flag"],
     }
 
 
