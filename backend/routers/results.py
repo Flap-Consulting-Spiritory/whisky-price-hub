@@ -44,7 +44,8 @@ async def get_results(
     """Get all bottle results for a job, optionally filtered by status."""
     async for db in get_db():
         # Verify job exists
-        job = await db.execute_fetchone("SELECT id FROM jobs WHERE id=?", (job_id,))
+        cursor = await db.execute("SELECT id FROM jobs WHERE id=?", (job_id,))
+        job = await cursor.fetchone()
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
 
@@ -67,7 +68,8 @@ async def get_results(
 async def download_csv(job_id: str):
     """Download the enriched CSV. Only available when job is completed."""
     async for db in get_db():
-        row = await db.execute_fetchone("SELECT * FROM jobs WHERE id=?", (job_id,))
+        cur = await db.execute("SELECT * FROM jobs WHERE id=?", (job_id,))
+        row = await cur.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Job not found")
         if row["status"] == "running" or row["status"] == "pending":

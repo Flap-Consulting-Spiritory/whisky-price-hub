@@ -21,7 +21,8 @@ async def _event_generator(job_id: str):
     if queue is None:
         # Job may already be finished — send a done event with current DB state
         async for db in get_db():
-            row = await db.execute_fetchone("SELECT * FROM jobs WHERE id=?", (job_id,))
+            cursor = await db.execute("SELECT * FROM jobs WHERE id=?", (job_id,))
+            row = await cursor.fetchone()
             if row:
                 yield f"data: {json.dumps({'type': 'done', 'status': row['status'], 'scraped': row['scraped'], 'failed': row['failed'], 'skipped': row['skipped']})}\n\n"
             else:
@@ -46,7 +47,8 @@ async def stream_job(job_id: str):
     """SSE endpoint — streams real-time scraping events for a job."""
     # Verify job exists
     async for db in get_db():
-        row = await db.execute_fetchone("SELECT id, status FROM jobs WHERE id=?", (job_id,))
+        cursor = await db.execute("SELECT id, status FROM jobs WHERE id=?", (job_id,))
+        row = await cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Job not found")
 

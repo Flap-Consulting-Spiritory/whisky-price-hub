@@ -103,9 +103,8 @@ async def list_jobs():
 async def get_job(job_id: str):
     """Get a single job by ID."""
     async for db in get_db():
-        row = await db.execute_fetchone(
-            "SELECT * FROM jobs WHERE id=?", (job_id,)
-        )
+        cursor = await db.execute("SELECT * FROM jobs WHERE id=?", (job_id,))
+        row = await cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Job not found")
         return _row_to_summary(row)

@@ -2,10 +2,19 @@
 WhiskyPriceHub FastAPI application.
 """
 import asyncio
+import logging
 import os
+import traceback
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger("whiskyhub")
 
 import jobs_store
 from database import init_db
@@ -29,6 +38,16 @@ app.add_middleware(
 app.include_router(jobs.router)
 app.include_router(stream.router)
 app.include_router(results.router)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.error(
+        "Unhandled error on %s %s: %s\n%s",
+        request.method, request.url.path,
+        exc, traceback.format_exc(),
+    )
+    return JSONResponse(status_code=500, content={"detail": str(exc)})
 
 
 @app.on_event("startup")
