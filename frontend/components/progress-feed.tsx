@@ -24,7 +24,6 @@ export function ProgressFeed({ jobId, onDone }: ProgressFeedProps) {
   const [connected, setConnected] = useState(false);
   const [finished, setFinished] = useState(false);
   const finishedRef = useRef(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
 
   const addLine = useCallback((text: string, type: LogLine["type"] = "info", ts = "") => {
     setLines((prev) => [...prev, { id: ++_lineId, text, type, ts }]);
@@ -83,10 +82,6 @@ export function ProgressFeed({ jobId, onDone }: ProgressFeedProps) {
     return () => es.close();
   }, [jobId, addLine, onDone]);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [lines]);
-
   const lineColor: Record<LogLine["type"], string> = {
     info: "text-zinc-400",
     success: "text-green-400",
@@ -120,7 +115,6 @@ export function ProgressFeed({ jobId, onDone }: ProgressFeedProps) {
             <span className={lineColor[line.type]}>{line.text}</span>
           </div>
         ))}
-        <div ref={bottomRef} />
       </div>
     </div>
   );

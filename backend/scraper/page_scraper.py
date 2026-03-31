@@ -129,8 +129,7 @@ def scrape_bottle_prices(whiskybase_id: str, emit_fn=None) -> dict:
             data['top_listings'] = listings_found
             data['lowest_price'] = min(listing_prices)
             data['highest_price'] = max(listing_prices)
-            if data['avg_retail_price'] is None:
-                data['avg_retail_price'] = round(sum(listing_prices) / len(listing_prices), 2)
+            data['avg_retail_price'] = round(sum(listing_prices) / len(listing_prices), 2)
             data['avg_retail_currency'] = listings_found[0]['currency'] if listings_found else 'EUR'
 
         # ── 4. Listing count from page text ───────────────────────────────────

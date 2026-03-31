@@ -90,6 +90,8 @@ def run_job(job_id: str) -> None:
 
         # Insert skipped rows immediately
         for bottle in to_skip:
+            _emit("log", level="warn",
+                  msg=f"  → Skipped: {bottle['bottle_name'] or bottle['bottle_id']} — no WhiskyBase ID in CSV")
             conn.execute("""
                 INSERT INTO bottle_results
                 (job_id, row_index, bottle_id, whiskybase_id, bottle_name, brand_name,
@@ -153,6 +155,14 @@ def run_job(job_id: str) -> None:
                         "UPDATE jobs SET scraped=? WHERE id=?",
                         (scraped_count, job_id)
                     )
+                    _emit("log", level="info",
+                          msg=(
+                              f"  → Saved: avg={price_data.get('avg_retail_price')} "
+                              f"{price_data.get('avg_retail_currency', 'EUR')}, "
+                              f"low={price_data.get('lowest_price')}, "
+                              f"high={price_data.get('highest_price')}, "
+                              f"listings={price_data.get('listing_count', 0)}"
+                          ))
                     conn.commit()
 
                     ban_retries = 0
