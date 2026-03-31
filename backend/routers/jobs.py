@@ -99,6 +99,18 @@ async def list_jobs():
         return [_row_to_summary(r) for r in rows]
 
 
+@router.get("/{job_id}/logs")
+async def get_job_logs(job_id: str):
+    """Return stored log lines for a job (for display on completed job pages)."""
+    async for db in get_db():
+        cursor = await db.execute(
+            "SELECT ts, level, msg FROM job_logs WHERE job_id=? ORDER BY id",
+            (job_id,)
+        )
+        rows = await cursor.fetchall()
+        return [{"ts": r["ts"], "level": r["level"], "msg": r["msg"]} for r in rows]
+
+
 @router.get("/{job_id}", response_model=JobSummary)
 async def get_job(job_id: str):
     """Get a single job by ID."""

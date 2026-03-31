@@ -25,6 +25,9 @@ from tenacity import RetryError as TenacityRetryError
 BAN_COOLDOWNS = [600, 1200, 2400, 3600]  # 10, 20, 40, 60 minutes
 MAX_BAN_RETRIES = 6
 
+MAX_BOTTLE_RETRIES = 3
+BOTTLE_RETRY_DELAY = 15  # seconds between generic-error retries
+
 DATA_DIR = Path(__file__).parent.parent.parent / "data"
 
 
@@ -66,6 +69,12 @@ def run_job(job_id: str) -> None:
         }
         print(f"[Job {job_id[:8]}] {event}")
         emit(job_id, event)
+        if type_ == "log":
+            conn.execute(
+                "INSERT INTO job_logs (job_id, ts, level, msg) VALUES (?, ?, ?, ?)",
+                (job_id, event['ts'], kwargs.get('level', 'info'), kwargs.get('msg', ''))
+            )
+            conn.commit()
 
     conn = _db_sync()
     try:
@@ -139,7 +148,23 @@ def run_job(job_id: str) -> None:
 
                     _emit("log", level="info", msg=f"  → Scraping WhiskyBase...")
 
-                    price_data = scrape_bottle_prices(wb_id, emit_fn=_emit)
+                    last_exc = None
+                    price_data = None
+                    for attempt in range(MAX_BOTTLE_RETRIES):
+                        try:
+                            price_data = scrape_bottle_prices(wb_id, emit_fn=_emit)
+                            last_exc = None
+                            break
+                        except (ScrapeBanException, ScrapeHardBanException, TenacityRetryError):
+                            raise
+                        except Exception as exc:
+                            last_exc = exc
+                            if attempt < MAX_BOTTLE_RETRIES - 1:
+                                _emit("log", level="warn",
+                                      msg=f"  → Retry {attempt + 1}/{MAX_BOTTLE_RETRIES - 1} for {bottle_name}: {exc}")
+                                time.sleep(BOTTLE_RETRY_DELAY)
+                    if last_exc is not None:
+                        raise last_exc
 
                     # Save to DB
                     price_flag = _compute_price_flag(

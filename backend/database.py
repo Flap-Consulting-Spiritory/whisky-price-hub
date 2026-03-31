@@ -54,6 +54,19 @@ async def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_bottle_results_job_id
             ON bottle_results(job_id)
         """)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS job_logs (
+                id     INTEGER PRIMARY KEY AUTOINCREMENT,
+                job_id TEXT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+                ts     TEXT,
+                level  TEXT,
+                msg    TEXT
+            )
+        """)
+        await db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_job_logs_job_id
+            ON job_logs(job_id)
+        """)
         # Migrations for existing databases (SQLite has no ADD COLUMN IF NOT EXISTS)
         for col_sql in [
             "ALTER TABLE bottle_results ADD COLUMN client_ask_price REAL",

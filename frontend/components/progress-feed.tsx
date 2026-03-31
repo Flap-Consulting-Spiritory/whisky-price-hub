@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { getStreamUrl } from "@/lib/api";
+import { getStreamUrl, getJobLogs } from "@/lib/api";
 import type { SSEEvent } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -15,11 +15,12 @@ interface LogLine {
 interface ProgressFeedProps {
   jobId: string;
   onDone?: () => void;
+  isCompleted?: boolean;
 }
 
 let _lineId = 0;
 
-export function ProgressFeed({ jobId, onDone }: ProgressFeedProps) {
+export function ProgressFeed({ jobId, onDone, isCompleted }: ProgressFeedProps) {
   const [lines, setLines] = useState<LogLine[]>([]);
   const [connected, setConnected] = useState(false);
   const [finished, setFinished] = useState(false);
@@ -29,7 +30,24 @@ export function ProgressFeed({ jobId, onDone }: ProgressFeedProps) {
     setLines((prev) => [...prev, { id: ++_lineId, text, type, ts }]);
   }, []);
 
+  // Historical log fetch for completed jobs
   useEffect(() => {
+    if (!isCompleted) return;
+    getJobLogs(jobId)
+      .then((logs) => {
+        logs.forEach((l) => {
+          const t = l.level === "error" ? "error" : l.level === "warn" ? "warn" : "info";
+          addLine(l.msg, t as LogLine["type"], l.ts);
+        });
+        setFinished(true);
+        setConnected(false);
+      })
+      .catch(() => addLine("Could not load log history.", "warn"));
+  }, [isCompleted, jobId, addLine]);
+
+  // Live SSE feed for active jobs
+  useEffect(() => {
+    if (isCompleted) return;
     finishedRef.current = false;
     const url = getStreamUrl(jobId);
     const es = new EventSource(url);

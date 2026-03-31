@@ -86,13 +86,11 @@ export default function JobPage() {
       {/* Stats */}
       <StatsCards job={job} />
 
-      {/* Live feed — only shown while active */}
-      {isActive && (
-        <section className="space-y-2">
-          <h2 className="text-sm font-semibold text-foreground">Live Output</h2>
-          <ProgressFeed jobId={id} onDone={handleDone} />
-        </section>
-      )}
+      {/* Log feed — live while active, historical when completed */}
+      <section className="space-y-2">
+        <h2 className="text-sm font-semibold text-foreground">Output</h2>
+        <ProgressFeed jobId={id} onDone={handleDone} isCompleted={!isActive} />
+      </section>
 
       {/* Results */}
       <section className="space-y-2">

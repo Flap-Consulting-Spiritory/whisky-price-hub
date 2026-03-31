@@ -41,6 +41,14 @@ export function getDownloadUrl(jobId: string): string {
   return `${BASE}/jobs/${jobId}/download`;
 }
 
+export async function getJobLogs(
+  jobId: string
+): Promise<Array<{ ts: string; level: string; msg: string }>> {
+  const res = await fetch(`${BASE}/jobs/${jobId}/logs`);
+  if (!res.ok) throw new Error(`Failed to fetch logs: ${res.status}`);
+  return res.json();
+}
+
 export function getStreamUrl(jobId: string): string {
   const backend = process.env.NEXT_PUBLIC_API_URL;
   if (backend) return `${backend}/api/jobs/${jobId}/stream`;
