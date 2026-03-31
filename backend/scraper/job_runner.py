@@ -123,7 +123,7 @@ def run_job(job_id: str) -> None:
 
                     _emit("log", level="info", msg=f"  → Scraping WhiskyBase...")
 
-                    price_data = scrape_bottle_prices(wb_id)
+                    price_data = scrape_bottle_prices(wb_id, emit_fn=_emit)
 
                     # Save to DB
                     conn.execute("""

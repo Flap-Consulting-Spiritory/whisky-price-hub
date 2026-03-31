@@ -42,5 +42,7 @@ export function getDownloadUrl(jobId: string): string {
 }
 
 export function getStreamUrl(jobId: string): string {
+  const backend = process.env.NEXT_PUBLIC_API_URL;
+  if (backend) return `${backend}/api/jobs/${jobId}/stream`;
   return `${BASE}/jobs/${jobId}/stream`;
 }

@@ -23,6 +23,7 @@ export function ProgressFeed({ jobId, onDone }: ProgressFeedProps) {
   const [lines, setLines] = useState<LogLine[]>([]);
   const [connected, setConnected] = useState(false);
   const [finished, setFinished] = useState(false);
+  const finishedRef = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const addLine = useCallback((text: string, type: LogLine["type"] = "info", ts = "") => {
@@ -30,6 +31,7 @@ export function ProgressFeed({ jobId, onDone }: ProgressFeedProps) {
   }, []);
 
   useEffect(() => {
+    finishedRef.current = false;
     const url = getStreamUrl(jobId);
     const es = new EventSource(url);
 
@@ -60,6 +62,7 @@ export function ProgressFeed({ jobId, onDone }: ProgressFeedProps) {
             `Job ${event.status}. Scraped: ${event.scraped} | Failed: ${event.failed} | Skipped: ${event.skipped}`,
             event.status === "completed" ? "success" : "error"
           );
+          finishedRef.current = true;
           setFinished(true);
           es.close();
           onDone?.();
@@ -70,15 +73,15 @@ export function ProgressFeed({ jobId, onDone }: ProgressFeedProps) {
     };
 
     es.onerror = () => {
-      if (!finished) {
-        addLine("Stream disconnected.", "warn");
-        setConnected(false);
+      setConnected(false);
+      if (!finishedRef.current) {
+        addLine("Stream disconnected, reconnecting...", "warn");
+        // Don't close — browser EventSource will auto-reconnect
       }
-      es.close();
     };
 
     return () => es.close();
-  }, [jobId, addLine, onDone, finished]);
+  }, [jobId, addLine, onDone]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });

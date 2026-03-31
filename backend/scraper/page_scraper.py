@@ -21,7 +21,7 @@ from scraper.exceptions import ScrapeBanException, ScrapeHardBanException
     retry=retry_if_exception_type(ScrapeBanException),
     reraise=True,
 )
-def scrape_bottle_prices(whiskybase_id: str) -> dict:
+def scrape_bottle_prices(whiskybase_id: str, emit_fn=None) -> dict:
     """
     Scrapes price data from a WhiskyBase bottle page.
 
@@ -145,11 +145,20 @@ def scrape_bottle_prices(whiskybase_id: str) -> dict:
         raise
 
     except ScrapeBanException as e:
+        if emit_fn:
+            emit_fn("log", level="warn",
+                    msg=f"[CF] Challenge detected for WB{numeric_id} — retrying ({url[-30:]})")
         print(f"    [Anti-Ban] Request blocked for {url}: {e} - Retrying...")
         raise
 
     except Exception as e:
         print(f"[WhiskyBase] Unhandled Error scraping {url}: {e}")
         raise e
+
+    # If no real marketplace listings confirmed, price data is unreliable
+    if data['listing_count'] == 0:
+        data['avg_retail_price'] = None
+        data['lowest_price'] = None
+        data['highest_price'] = None
 
     return data
