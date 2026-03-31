@@ -16,7 +16,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "all", label: "All" },
   { key: "success", label: "Success" },
   { key: "failed", label: "Failed" },
-  { key: "skipped_no_id", label: "Skipped" },
+  { key: "skipped_no_id", label: "No WB ID" },
 ];
 
 export function ResultsTable({ jobId, refreshKey = 0 }: ResultsTableProps) {
@@ -78,9 +78,11 @@ export function ResultsTable({ jobId, refreshKey = 0 }: ResultsTableProps) {
                 <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">#</th>
                 <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Bottle</th>
                 <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">WB ID</th>
-                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">Avg Price</th>
-                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">Low</th>
-                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">High</th>
+                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">Client Ask</th>
+                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">WB Avg</th>
+                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">WB Low</th>
+                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">WB High</th>
+                <th className="px-3 py-2.5 text-center font-medium text-muted-foreground">vs WB</th>
                 <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">Listings</th>
                 <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Top Shop</th>
                 <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Status</th>
@@ -104,6 +106,9 @@ export function ResultsTable({ jobId, refreshKey = 0 }: ResultsTableProps) {
                     <td className="px-3 py-2.5 text-muted-foreground font-mono">
                       {r.whiskybase_id ? `WB${r.whiskybase_id}` : "—"}
                     </td>
+                    <td className="px-3 py-2.5 text-right text-muted-foreground">
+                      {r.client_ask_price != null ? formatPrice(r.client_ask_price, r.wb_avg_retail_currency ?? "EUR") : "—"}
+                    </td>
                     <td className="px-3 py-2.5 text-right font-medium text-foreground">
                       {formatPrice(r.wb_avg_retail_price, r.wb_avg_retail_currency)}
                     </td>
@@ -112,6 +117,9 @@ export function ResultsTable({ jobId, refreshKey = 0 }: ResultsTableProps) {
                     </td>
                     <td className="px-3 py-2.5 text-right text-muted-foreground">
                       {formatPrice(r.wb_highest_price, r.wb_avg_retail_currency)}
+                    </td>
+                    <td className="px-3 py-2.5 text-center">
+                      <PriceFlagBadge flag={r.price_flag} />
                     </td>
                     <td className="px-3 py-2.5 text-right text-muted-foreground">
                       {r.wb_listing_count ?? "—"}
@@ -147,6 +155,23 @@ export function ResultsTable({ jobId, refreshKey = 0 }: ResultsTableProps) {
   );
 }
 
+function PriceFlagBadge({ flag }: { flag: BottleResult["price_flag"] }) {
+  if (!flag || flag === "no_wb_price" || flag === "no_client_price") {
+    return <span className="text-zinc-600">—</span>;
+  }
+  const cfg = {
+    wb_higher: { cls: "bg-red-950 text-red-400 border-red-900", label: "WB ↑" },
+    wb_lower:  { cls: "bg-green-950 text-green-400 border-green-900", label: "WB ↓" },
+    same:      { cls: "bg-yellow-950 text-yellow-400 border-yellow-900", label: "≈" },
+  }[flag];
+  if (!cfg) return <span className="text-zinc-600">—</span>;
+  return (
+    <span className={`inline-block px-1.5 py-0.5 rounded border text-xs font-medium ${cfg.cls}`}>
+      {cfg.label}
+    </span>
+  );
+}
+
 function ScrapeStatusBadge({
   status,
   error,
@@ -163,7 +188,7 @@ function ScrapeStatusBadge({
   const label = {
     success: "success",
     failed: "failed",
-    skipped_no_id: "skipped",
+    skipped_no_id: "no wb id",
   }[status];
 
   return (

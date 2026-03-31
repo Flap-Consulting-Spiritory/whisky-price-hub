@@ -32,6 +32,19 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _compute_price_flag(client_ask: Optional[float], wb_avg: Optional[float]) -> str:
+    if wb_avg is None:
+        return "no_wb_price"
+    if client_ask is None:
+        return "no_client_price"
+    diff = (wb_avg - client_ask) / client_ask
+    if diff > 0.01:
+        return "wb_higher"
+    if diff < -0.01:
+        return "wb_lower"
+    return "same"
+
+
 def _db_sync():
     """Return a synchronous sqlite3 connection (used inside the blocking thread)."""
     import sqlite3
@@ -82,26 +95,27 @@ def run_job(job_id: str) -> None:
 
         _emit("log", level="info", msg=f"[Job] {total} rows loaded from CSV")
 
-        # Count skipped (no WB ID) upfront
+        # Split: bottles with/without WB ID
         to_scrape = [b for b in bottles if b['whiskybase_id']]
-        to_skip = [b for b in bottles if not b['whiskybase_id']]
+        no_wb_id = [b for b in bottles if not b['whiskybase_id']]
 
-        _emit("log", level="info", msg=f"[Job] {len(to_scrape)} bottles with WB ID, {len(to_skip)} skipped (no ID)")
+        _emit("log", level="info", msg=f"[Job] {len(to_scrape)} bottles with WB ID, {len(no_wb_id)} without WB ID (included in output)")
 
-        # Insert skipped rows immediately
-        for bottle in to_skip:
-            _emit("log", level="warn",
-                  msg=f"  → Skipped: {bottle['bottle_name'] or bottle['bottle_id']} — no WhiskyBase ID in CSV")
+        # Insert no-WB-ID rows immediately with client price data
+        for bottle in no_wb_id:
+            _emit("log", level="info",
+                  msg=f"  → No WB ID: {bottle['bottle_name'] or bottle['bottle_id']} — included in output without WB data")
             conn.execute("""
                 INSERT INTO bottle_results
                 (job_id, row_index, bottle_id, whiskybase_id, bottle_name, brand_name,
-                 wb_scrape_status, wb_scraped_at)
-                VALUES (?, ?, ?, ?, ?, ?, 'skipped_no_id', ?)
+                 wb_scrape_status, wb_scraped_at, client_ask_price, price_flag)
+                VALUES (?, ?, ?, ?, ?, ?, 'skipped_no_id', ?, ?, 'no_wb_price')
             """, (
                 job_id, bottle['row_index'], bottle['bottle_id'],
-                None, bottle['bottle_name'], bottle['brand_name'], _now_iso()
+                None, bottle['bottle_name'], bottle['brand_name'],
+                _now_iso(), bottle.get('client_ask_price')
             ))
-        conn.execute("UPDATE jobs SET skipped=? WHERE id=?", (len(to_skip), job_id))
+        conn.execute("UPDATE jobs SET skipped=? WHERE id=?", (len(no_wb_id), job_id))
         conn.commit()
 
         scraped_count = 0
@@ -128,13 +142,17 @@ def run_job(job_id: str) -> None:
                     price_data = scrape_bottle_prices(wb_id, emit_fn=_emit)
 
                     # Save to DB
+                    price_flag = _compute_price_flag(
+                        bottle.get('client_ask_price'),
+                        price_data.get('avg_retail_price'),
+                    )
                     conn.execute("""
                         INSERT INTO bottle_results
                         (job_id, row_index, bottle_id, whiskybase_id, bottle_name, brand_name,
                          wb_avg_retail_price, wb_avg_retail_currency,
                          wb_lowest_price, wb_highest_price, wb_listing_count, wb_top_listings,
-                         wb_scrape_status, wb_scraped_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'success', ?)
+                         wb_scrape_status, wb_scraped_at, client_ask_price, price_flag)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'success', ?, ?, ?)
                     """, (
                         job_id,
                         bottle['row_index'],
@@ -149,6 +167,8 @@ def run_job(job_id: str) -> None:
                         price_data.get('listing_count', 0),
                         json.dumps(price_data.get('top_listings', [])),
                         _now_iso(),
+                        bottle.get('client_ask_price'),
+                        price_flag,
                     ))
                     scraped_count += 1
                     conn.execute(
@@ -193,13 +213,15 @@ def run_job(job_id: str) -> None:
                             conn.execute("""
                                 INSERT OR IGNORE INTO bottle_results
                                 (job_id, row_index, bottle_id, whiskybase_id, bottle_name, brand_name,
-                                 wb_scrape_status, wb_scraped_at, error_message)
-                                VALUES (?, ?, ?, ?, ?, ?, 'failed', ?, ?)
+                                 wb_scrape_status, wb_scraped_at, error_message,
+                                 client_ask_price, price_flag)
+                                VALUES (?, ?, ?, ?, ?, ?, 'failed', ?, ?, ?, 'no_wb_price')
                             """, (
                                 job_id, remaining_bottle['row_index'],
                                 remaining_bottle['bottle_id'], remaining_bottle['whiskybase_id'],
                                 remaining_bottle['bottle_name'], remaining_bottle['brand_name'],
-                                _now_iso(), "Max ban retries reached"
+                                _now_iso(), "Max ban retries reached",
+                                remaining_bottle.get('client_ask_price'),
                             ))
                             failed_count += 1
                         conn.execute("UPDATE jobs SET failed=? WHERE id=?", (failed_count, job_id))
@@ -225,12 +247,14 @@ def run_job(job_id: str) -> None:
                     conn.execute("""
                         INSERT OR IGNORE INTO bottle_results
                         (job_id, row_index, bottle_id, whiskybase_id, bottle_name, brand_name,
-                         wb_scrape_status, wb_scraped_at, error_message)
-                        VALUES (?, ?, ?, ?, ?, ?, 'failed', ?, ?)
+                         wb_scrape_status, wb_scraped_at, error_message,
+                         client_ask_price, price_flag)
+                        VALUES (?, ?, ?, ?, ?, ?, 'failed', ?, ?, ?, 'no_wb_price')
                     """, (
                         job_id, bottle['row_index'], bottle['bottle_id'], wb_id,
                         bottle['bottle_name'], bottle['brand_name'],
-                        _now_iso(), str(e)[:500]
+                        _now_iso(), str(e)[:500],
+                        bottle.get('client_ask_price'),
                     ))
                     failed_count += 1
                     conn.execute("UPDATE jobs SET failed=? WHERE id=?", (failed_count, job_id))
@@ -280,7 +304,7 @@ def run_job(job_id: str) -> None:
               status="completed",
               scraped=scraped_count,
               failed=failed_count,
-              skipped=len(to_skip))
+              skipped=len(no_wb_id))
 
     except Exception as e:
         _emit("log", level="error", msg=f"[Job] Fatal error: {e}")

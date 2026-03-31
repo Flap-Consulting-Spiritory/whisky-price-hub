@@ -32,12 +32,21 @@ def parse_csv(file_path: str) -> list[dict]:
             raw_wb_id = row.get('whiskybaseID') or row.get('wb_id') or row.get('whiskybase_id') or ''
             wb_id = extract_wb_id(raw_wb_id)
 
+            raw_ask = (row.get('lowest_active_ask_price_now') or '').strip()
+            client_ask_price: Optional[float] = None
+            if raw_ask:
+                try:
+                    client_ask_price = float(re.sub(r'[^\d.]', '', raw_ask))
+                except ValueError:
+                    pass
+
             bottles.append({
                 'row_index': i,
                 'bottle_id': (row.get('bottle_id') or '').strip(),
                 'whiskybase_id': wb_id,
                 'bottle_name': (row.get('bottle_name') or '').strip(),
                 'brand_name': (row.get('brand_name') or '').strip(),
+                'client_ask_price': client_ask_price,
                 'original_row': dict(row),  # preserve ALL original columns
             })
 
@@ -64,6 +73,7 @@ def write_enriched_csv(
         'wb_top_listings',
         'wb_scrape_status',
         'wb_scraped_at',
+        'price_flag',
     ]
 
     if not bottles:
@@ -92,5 +102,6 @@ def write_enriched_csv(
             row['wb_top_listings'] = result.get('wb_top_listings', '')
             row['wb_scrape_status'] = result.get('wb_scrape_status', 'skipped_no_id')
             row['wb_scraped_at'] = result.get('wb_scraped_at', '')
+            row['price_flag'] = result.get('price_flag', '')
 
             writer.writerow(row)

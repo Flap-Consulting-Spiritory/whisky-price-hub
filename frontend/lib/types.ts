@@ -37,6 +37,8 @@ export interface BottleResult {
   wb_scrape_status: "success" | "failed" | "skipped_no_id";
   wb_scraped_at: string | null;
   error_message: string | null;
+  client_ask_price: number | null;
+  price_flag: "wb_higher" | "wb_lower" | "same" | "no_wb_price" | "no_client_price" | null;
 }
 
 export interface ResultsResponse {

@@ -45,13 +45,24 @@ async def init_db() -> None:
                 wb_top_listings        TEXT,
                 wb_scrape_status       TEXT NOT NULL,
                 wb_scraped_at          TEXT,
-                error_message          TEXT
+                error_message          TEXT,
+                client_ask_price       REAL,
+                price_flag             TEXT
             )
         """)
         await db.execute("""
             CREATE INDEX IF NOT EXISTS idx_bottle_results_job_id
             ON bottle_results(job_id)
         """)
+        # Migrations for existing databases (SQLite has no ADD COLUMN IF NOT EXISTS)
+        for col_sql in [
+            "ALTER TABLE bottle_results ADD COLUMN client_ask_price REAL",
+            "ALTER TABLE bottle_results ADD COLUMN price_flag TEXT",
+        ]:
+            try:
+                await db.execute(col_sql)
+            except Exception:
+                pass  # Column already exists
         await db.commit()
 
 
