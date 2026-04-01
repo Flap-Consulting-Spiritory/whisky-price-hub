@@ -1,27 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createHash } from 'crypto'
 
 export function middleware(request: NextRequest) {
-  const authHeader = request.headers.get('authorization')
-  const password = process.env.AUTH_PASSWORD
-  const username = process.env.AUTH_USERNAME
+  const expectedUsername = process.env.AUTH_USERNAME
+  const expectedPassword = process.env.AUTH_PASSWORD
 
-  if (authHeader) {
-    const encoded = authHeader.split(' ')[1]
-    const decoded = Buffer.from(encoded, 'base64').toString('utf-8')
-    const colonIndex = decoded.indexOf(':')
-    const inputUsername = decoded.slice(0, colonIndex)
-    const inputPassword = decoded.slice(colonIndex + 1)
-    if (inputUsername === username && inputPassword === password) {
-      return NextResponse.next()
-    }
+  const expectedToken = createHash('sha256')
+    .update(`${expectedUsername}:${expectedPassword}`)
+    .digest('hex')
+
+  const sessionCookie = request.cookies.get('wph_session')?.value
+
+  if (sessionCookie === expectedToken) {
+    return NextResponse.next()
   }
 
-  return new NextResponse('Unauthorized', {
-    status: 401,
-    headers: { 'WWW-Authenticate': 'Basic realm="WhiskyPriceHub"' },
-  })
+  const loginUrl = new URL('/login', request.url)
+  return NextResponse.redirect(loginUrl)
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|login|api/auth).*)'],
 }
