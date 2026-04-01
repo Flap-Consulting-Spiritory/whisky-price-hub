@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WhiskyPriceHub — Production Setup Guide</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,300,0,0" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #08081a;
+      --surface: rgba(255,255,255,0.04);
+      --surface-hover: rgba(255,255,255,0.07);
+      --border: rgba(255,255,255,0.08);
+      --border-hover: rgba(255,255,255,0.16);
+      --text: #e8e8f0;
+      --text-muted: #8888a8;
+      --accent: #6c63ff;
+      --accent-dim: rgba(108,99,255,0.15);
+      --green: #22d37e;
+      --green-dim: rgba(34,211,126,0.12);
+      --amber: #f59e0b;
+      --amber-dim: rgba(245,158,11,0.12);
+      --red: #f87171;
+      --red-dim: rgba(248,113,113,0.12);
+      --code-bg: #0d0d24;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.65;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Orbs ── */
+    .orb {
+      position: fixed; border-radius: 50%;
+      filter: blur(120px); pointer-events: none; z-index: 0;
+    }
+    .orb-1 { width: 600px; height: 600px; background: rgba(108,99,255,0.10); top: -200px; right: -150px; }
+    .orb-2 { width: 500px; height: 500px; background: rgba(34,211,126,0.06); bottom: -150px; left: -100px; }
+
+    /* ── Layout ── */
+    .page { position: relative; z-index: 1; max-width: 720px; margin: 0 auto; padding: 48px 20px 80px; }
+
+    /* ── Material Symbols ── */
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+      font-size: 18px; line-height: 1; vertical-align: middle; user-select: none;
+    }
+
+    /* ── Header ── */
+    header { margin-bottom: 48px; }
+    .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+    .logo-icon {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, var(--accent), #9b8fff);
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    }
+    .logo-icon .material-symbols-outlined { font-size: 20px; color: #fff; }
+    .logo-name { font-size: 16px; font-weight: 600; color: #fff; }
+    .logo-name span { color: var(--text-muted); font-weight: 400; }
+
+    header h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.03em; color: #fff; line-height: 1.2; margin-bottom: 8px; }
+    header p { color: var(--text-muted); font-size: 14px; max-width: 500px; }
+
+    .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500;
+      background: var(--accent-dim); color: #a99fff; border: 1px solid rgba(108,99,255,0.25);
+    }
+    .badge .material-symbols-outlined { font-size: 13px; }
+
+    /* ── Section title ── */
+    .section-title {
+      font-size: 11px; font-weight: 600; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--text-muted);
+      margin: 40px 0 14px;
+    }
+
+    /* ── Inline code ── */
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px; background: rgba(255,255,255,0.07); color: #c9c5ff;
+      padding: 1px 6px; border-radius: 4px;
+    }
+
+    /* ── Alerts ── */
+    .alert {
+      display: flex; gap: 10px; align-items: flex-start;
+      padding: 11px 13px; border-radius: 10px;
+      font-size: 13px; line-height: 1.5; margin-bottom: 12px;
+    }
+    .alert .material-symbols-outlined { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+    .alert.info    { background: var(--accent-dim); border: 1px solid rgba(108,99,255,0.2); color: #c4bfff; }
+    .alert.info    .material-symbols-outlined { color: #9b8fff; }
+    .alert.warning { background: var(--amber-dim);  border: 1px solid rgba(245,158,11,0.2);  color: #fcd97a; }
+    .alert.warning .material-symbols-outlined { color: var(--amber); }
+    .alert.success { background: var(--green-dim);  border: 1px solid rgba(34,211,126,0.2);  color: #86efb4; }
+    .alert.success .material-symbols-outlined { color: var(--green); }
+
+    /* ── Code block ── */
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .code-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 6px 0 14px;
+      border-bottom: 1px solid var(--border);
+      min-height: 36px; gap: 8px;
+    }
+    .code-label {
+      font-size: 11px; font-weight: 500;
+      color: var(--text-muted); font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.04em; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .copy-btn {
+      display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+      padding: 4px 10px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border); border-radius: 6px;
+      cursor: pointer; font-size: 12px; font-weight: 500; color: var(--text-muted);
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      font-family: 'Inter', sans-serif;
+    }
+    .copy-btn:hover { background: rgba(255,255,255,0.11); color: var(--text); border-color: var(--border-hover); }
+    .copy-btn.copied { color: var(--green); border-color: rgba(34,211,126,0.3); background: var(--green-dim); }
+    .copy-btn .material-symbols-outlined { font-size: 13px; }
+
+    .code-block pre {
+      padding: 12px 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px; line-height: 1.7; color: #c9c5ff;
+      overflow-x: auto; white-space: pre;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.12) transparent;
+    }
+    .code-block pre::-webkit-scrollbar { height: 4px; }
+    .code-block pre::-webkit-scrollbar-track { background: transparent; }
+    .code-block pre::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.14); border-radius: 2px; }
+
+    /* ── Checklist ── */
+    .checklist { list-style: none; display: flex; flex-direction: column; gap: 7px; margin: 12px 0; }
+    .checklist li { display: flex; align-items: flex-start; gap: 9px; font-size: 14px; color: var(--text-muted); }
+    .checklist li .material-symbols-outlined { font-size: 16px; color: var(--green); flex-shrink: 0; margin-top: 2px; }
+
+    /* ── Flow (main install steps) ── */
+    .flow { display: flex; flex-direction: column; }
+    .flow-step { display: flex; gap: 0; position: relative; }
+
+    .flow-step:not(:last-child) .flow-spine::after {
+      content: '';
+      position: absolute; left: 50%; top: 44px; bottom: 0;
+      width: 1px; background: var(--border);
+      transform: translateX(-50%);
+    }
+
+    .flow-spine {
+      width: 52px; min-width: 52px;
+      display: flex; flex-direction: column; align-items: center;
+      padding-top: 16px; position: relative;
+    }
+
+    .flow-num {
+      width: 28px; height: 28px;
+      border-radius: 8px;
+      background: var(--accent-dim);
+      border: 1px solid rgba(108,99,255,0.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: #a99fff;
+      position: relative; z-index: 1;
+      flex-shrink: 0;
+    }
+    .flow-num.primary {
+      background: var(--accent); border-color: var(--accent); color: #fff;
+      box-shadow: 0 0 18px rgba(108,99,255,0.4);
+    }
+
+    .flow-body {
+      flex: 1; padding: 14px 0 26px 8px; min-width: 0;
+    }
+
+    .flow-title {
+      font-size: 15px; font-weight: 600; color: #fff;
+      line-height: 1.3; margin-bottom: 3px;
+    }
+    .flow-title.primary { color: #d4cfff; }
+    .flow-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 14px; }
+    .flow-note { font-size: 12px; color: var(--text-muted); margin-top: 8px; line-height: 1.5; }
+
+    /* ── Expandable sections ── */
+    .steps { display: flex; flex-direction: column; gap: 8px; }
+
+    .step {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden; transition: border-color 0.2s;
+    }
+    .step:hover { border-color: var(--border-hover); }
+
+    .step-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; cursor: pointer; user-select: none;
+    }
+    .step-icon {
+      width: 26px; height: 26px; min-width: 26px;
+      border-radius: 7px; background: var(--accent-dim);
+      border: 1px solid rgba(108,99,255,0.3);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .step-meta { flex: 1; }
+    .step-title { font-size: 14px; font-weight: 600; color: #fff; line-height: 1.3; margin-bottom: 1px; }
+    .step-desc { font-size: 12px; color: var(--text-muted); }
+    .step-chevron { color: var(--text-muted); transition: transform 0.25s; margin-left: auto; flex-shrink: 0; }
+    .step.open .step-chevron { transform: rotate(180deg); }
+
+    .step-body {
+      display: none; padding: 0 16px 16px;
+      border-top: 1px solid var(--border);
+    }
+    .step.open .step-body { display: block; }
+    .step-body > *:first-child { margin-top: 14px; }
+    .step-body p { color: var(--text-muted); font-size: 13px; margin-bottom: 10px; }
+    .step-body p:last-child { margin-bottom: 0; }
+    .step-body strong { color: var(--text); font-weight: 500; }
+
+    /* ── Env vars table ── */
+    .env-table { width: 100%; border-collapse: collapse; margin: 10px 0 14px; font-size: 13px; }
+    .env-table th {
+      text-align: left; padding: 7px 10px;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .env-table td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: top; }
+    .env-table tr:last-child td { border-bottom: none; }
+    .env-table td:first-child { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #c9c5ff; white-space: nowrap; }
+    .env-table td:last-child { color: var(--text-muted); }
+    .req-badge {
+      display: inline-block; padding: 1px 7px; border-radius: 4px;
+      font-size: 11px; font-weight: 600;
+      background: rgba(248,113,113,0.12); color: var(--red);
+      border: 1px solid rgba(248,113,113,0.2);
+    }
+    .opt-badge {
+      display: inline-block; padding: 1px 7px; border-radius: 4px;
+      font-size: 11px; font-weight: 600;
+      background: rgba(255,255,255,0.05); color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    /* ── Footer ── */
+    footer { margin-top: 56px; padding-top: 22px; border-top: 1px solid var(--border); text-align: center; }
+    footer p { font-size: 13px; color: var(--text-muted); }
+  </style>
+</head>
+<body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <div class="page">
+
+    <!-- ── Header ── -->
+    <header>
+      <div class="logo">
+        <div class="logo-icon">
+          <span class="material-symbols-outlined">liquor</span>
+        </div>
+        <div class="logo-name">WhiskyPriceHub <span>/ Setup</span></div>
+      </div>
+      <h1>Production Setup Guide</h1>
+      <p>Deploy WhiskyPriceHub on any VPS in minutes. Uploads a Spiritory CSV, scrapes WhiskyBase prices, and streams live progress to the browser.</p>
+      <div class="badges">
+        <div class="badge"><span class="material-symbols-outlined">dns</span>Ubuntu 22.04+</div>
+        <div class="badge"><span class="material-symbols-outlined">deployed_code</span>Docker 24+</div>
+        <div class="badge"><span class="material-symbols-outlined">language</span>Port 3000 + 8000</div>
+      </div>
+    </header>
+
+    <!-- ── Prerequisites ── -->
+    <div class="section-title">Before you start</div>
+    <ul class="checklist">
+      <li>
+        <span class="material-symbols-outlined">check_circle</span>
+        VPS running Ubuntu 22.04 or later — 2 vCPU / 2 GB RAM minimum (Chromium needs headroom)
+      </li>
+      <li>
+        <span class="material-symbols-outlined">check_circle</span>
+        Ports <strong>3000</strong> (frontend) and <strong>8000</strong> (backend) open in your firewall / security group
+      </li>
+      <li>
+        <span class="material-symbols-outlined">check_circle</span>
+        A domain pointed at the server (optional but recommended for HTTPS via reverse proxy)
+      </li>
+      <li>
+        <span class="material-symbols-outlined">check_circle</span>
+        SSH access to the server as root or a sudo user
+      </li>
+    </ul>
+
+    <!-- ── MAIN FLOW ── -->
+    <div class="section-title">Installation — 5 steps</div>
+    <div class="flow">
+
+      <!-- 1 · Docker -->
+      <div class="flow-step">
+        <div class="flow-spine"><div class="flow-num">1</div></div>
+        <div class="flow-body">
+          <div class="flow-title">Install Docker</div>
+          <div class="flow-desc">One command — installs Docker Engine and the Compose plugin</div>
+          <div class="code-block">
+            <div class="code-header">
+              <span class="code-label">terminal — install Docker</span>
+              <button class="copy-btn" onclick="copyCode(this, 'curl -fsSL https://get.docker.com | sh')">
+                <span class="material-symbols-outlined">content_copy</span>Copy
+              </button>
+            </div>
+            <pre>curl -fsSL https://get.docker.com | sh</pre>
+          </div>
+          <div class="flow-note">Verify with <code>docker --version</code> and <code>docker compose version</code> before continuing.</div>
+        </div>
+      </div>
+
+      <!-- 2 · Clone -->
+      <div class="flow-step">
+        <div class="flow-spine"><div class="flow-num">2</div></div>
+        <div class="flow-body">
+          <div class="flow-title">Clone the repository</div>
+          <div class="flow-desc">Fetch the code and enter the project directory</div>
+          <div class="code-block">
+            <div class="code-header">
+              <span class="code-label">terminal</span>
+              <button class="copy-btn" onclick="copyFromPre(this)">
+                <span class="material-symbols-outlined">content_copy</span>Copy
+              </button>
+            </div>
+            <pre>git clone https://github.com/AlejandroTechFlap/WhiskyPriceHub.git
+cd WhiskyPriceHub</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3 · Configure -->
+      <div class="flow-step">
+        <div class="flow-spine"><div class="flow-num">3</div></div>
+        <div class="flow-body">
+          <div class="flow-title">Configure environment variables</div>
+          <div class="flow-desc">Copy the template and fill in your domain and password</div>
+
+          <div class="alert warning">
+            <span class="material-symbols-outlined">warning</span>
+            <span><code>.env</code> contains secrets — never commit it to Git. It is already in <code>.gitignore</code>.</span>
+          </div>
+
+          <div class="code-block">
+            <div class="code-header">
+              <span class="code-label">step 3a — create .env</span>
+              <button class="copy-btn" onclick="copyFromPre(this)">
+                <span class="material-symbols-outlined">content_copy</span>Copy
+              </button>
+            </div>
+            <pre>cp .env.example .env
+nano .env</pre>
+          </div>
+
+          <table class="env-table">
+            <thead>
+              <tr><th>Variable</th><th>Type</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>NEXT_PUBLIC_API_URL</td>
+                <td><span class="req-badge">Required</span></td>
+                <td>Public URL of the backend — used by the browser for SSE. E.g. <code>https://api.yourdomain.com</code> or <code>http://YOUR_IP:8000</code></td>
+              </tr>
+              <tr>
+                <td>ALLOWED_ORIGINS</td>
+                <td><span class="req-badge">Required</span></td>
+                <td>Frontend origin allowed by CORS. E.g. <code>https://yourdomain.com</code> or <code>http://YOUR_IP:3000</code></td>
+              </tr>
+              <tr>
+                <td>AUTH_USERNAME</td>
+                <td><span class="req-badge">Required</span></td>
+                <td>Login username for the frontend. Default: <code>Spiritory</code></td>
+              </tr>
+              <tr>
+                <td>AUTH_PASSWORD</td>
+                <td><span class="req-badge">Required</span></td>
+                <td>Login password for the frontend — choose a strong password</td>
+              </tr>
+              <tr>
+                <td>PROXY_URL</td>
+                <td><span class="opt-badge">Optional</span></td>
+                <td>Residential proxy to reduce Cloudflare bans. Format: <code>http://user:pass@ip:port</code></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p>Full <code>.env</code> template to paste:</p>
+          <div class="code-block">
+            <div class="code-header">
+              <span class="code-label">.env — full template</span>
+              <button class="copy-btn" onclick="copyFromPre(this)">
+                <span class="material-symbols-outlined">content_copy</span>Copy
+              </button>
+            </div>
+            <pre>NEXT_PUBLIC_API_URL=https://api.yourdomain.com
+ALLOWED_ORIGINS=https://yourdomain.com
+AUTH_USERNAME=Spiritory
+AUTH_PASSWORD=change_me
+# PROXY_URL=http://user:pass@ip:port</pre>
+          </div>
+
+          <div class="alert info">
+            <span class="material-symbols-outlined">info</span>
+            <span>No domain yet? Use <code>http://YOUR_SERVER_IP:8000</code> for <code>NEXT_PUBLIC_API_URL</code> and <code>http://YOUR_SERVER_IP:3000</code> for <code>ALLOWED_ORIGINS</code>.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4 · Data dir -->
+      <div class="flow-step">
+        <div class="flow-spine"><div class="flow-num">4</div></div>
+        <div class="flow-body">
+          <div class="flow-title">Create the data directory</div>
+          <div class="flow-desc">Persistent volume for SQLite database and uploaded CSV files</div>
+          <div class="code-block">
+            <div class="code-header">
+              <span class="code-label">terminal</span>
+              <button class="copy-btn" onclick="copyCode(this, 'mkdir -p data')">
+                <span class="material-symbols-outlined">content_copy</span>Copy
+              </button>
+            </div>
+            <pre>mkdir -p data</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5 · Build and start — PRIMARY -->
+      <div class="flow-step">
+        <div class="flow-spine"><div class="flow-num primary">5</div></div>
+        <div class="flow-body">
+          <div class="flow-title primary">Build and start</div>
+          <div class="flow-desc">Builds both containers and starts them in the background</div>
+          <div class="code-block" style="border-color: rgba(108,99,255,0.3);">
+            <div class="code-header" style="border-color: rgba(108,99,255,0.2);">
+              <span class="code-label">terminal — first run (~5 min, installs Chromium)</span>
+              <button class="copy-btn" onclick="copyCode(this, 'docker compose up -d --build')">
+                <span class="material-symbols-outlined">content_copy</span>Copy
+              </button>
+            </div>
+            <pre>docker compose up -d --build</pre>
+          </div>
+          <div class="alert success">
+            <span class="material-symbols-outlined">check_circle</span>
+            <span>
+              Frontend: <strong>http://YOUR_SERVER_IP:3000</strong> — login with your <code>AUTH_USERNAME</code> / <code>AUTH_PASSWORD</code><br>
+              Backend: <strong>http://YOUR_SERVER_IP:8000/docs</strong> — FastAPI interactive docs
+            </span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /flow -->
+
+
+    <!-- ── MAINTENANCE ── -->
+    <div class="section-title">Maintenance</div>
+    <div class="steps">
+
+      <div class="step open">
+        <div class="step-header" onclick="toggleStep(this)">
+          <div class="step-icon">
+            <span class="material-symbols-outlined" style="font-size:14px;">update</span>
+          </div>
+          <div class="step-meta">
+            <div class="step-title">Update to the latest version</div>
+            <div class="step-desc">Pull new code and rebuild the containers</div>
+          </div>
+          <span class="material-symbols-outlined step-chevron">expand_more</span>
+        </div>
+        <div class="step-body">
+          <div class="code-block">
+            <div class="code-header">
+              <span class="code-label">terminal</span>
+              <button class="copy-btn" onclick="copyFromPre(this)">
+                <span class="material-symbols-outlined">content_copy</span>Copy
+              </button>
+            </div>
+            <pre>git pull
+docker compose up -d --build</pre>
+          </div>
+          <p>Your data and database are preserved — only the app code is updated.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header" onclick="toggleStep(this)">
+          <div class="step-icon">
+            <span class="material-symbols-outlined" style="font-size:14px;">article</span>
+          </div>
+          <div class="step-meta">
+            <div class="step-title">View live logs</div>
+            <div class="step-desc">Monitor scraping activity and debug errors</div>
+          </div>
+          <span class="material-symbols-outlined step-chevron">expand_more</span>
+        </div>
+        <div class="step-body">
+          <p>Both services:</p>
+          <div class="code-block">
+            <div class="code-header">
+              <span class="code-label">terminal</span>
+              <button class="copy-btn" onclick="copyCode(this, 'docker compose logs -f')">
+                <span class="material-symbols-outlined">content_copy</span>Copy
+              </button>
+            </div>
+            <pre>docker compose logs -f</pre>
+          </div>
+          <p>Backend only:</p>
+          <div class="code-block">
+            <div class="code-header">
+              <span class="code-label">terminal</span>
+              <button class="copy-btn" onclick="copyCode(this, 'docker compose logs -f backend')">
+                <span class="material-symbols-outlined">content_copy</span>Copy
+              </button>
+            </div>
+            <pre>docker compose logs -f backend</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header" onclick="toggleStep(this)">
+          <div class="step-icon">
+            <span class="material-symbols-outlined" style="font-size:14px;">stop_circle</span>
+          </div>
+          <div class="step-meta">
+            <div class="step-title">Stop / restart the services</div>
+            <div class="step-desc">Gracefully stop or restart both containers</div>
+          </div>
+          <span class="material-symbols-outlined step-chevron">expand_more</span>
+        </div>
+        <div class="step-body">
+          <p>Stop:</p>
+          <div class="code-block">
+            <div class="code-header">
+              <span class="code-label">terminal</span>
+              <button class="copy-btn" onclick="copyCode(this, 'docker compose down')">
+                <span class="material-symbols-outlined">content_copy</span>Copy
+              </button>
+            </div>
+            <pre>docker compose down</pre>
+          </div>
+          <p>Restart:</p>
+          <div class="code-block">
+            <div class="code-header">
+              <span class="code-label">terminal</span>
+              <button class="copy-btn" onclick="copyCode(this, 'docker compose restart')">
+                <span class="material-symbols-outlined">content_copy</span>Copy
+              </button>
+            </div>
+            <pre>docker compose restart</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header" onclick="toggleStep(this)">
+          <div class="step-icon">
+            <span class="material-symbols-outlined" style="font-size:14px;">shield</span>
+          </div>
+          <div class="step-meta">
+            <div class="step-title">Cloudflare bans (optional proxy)</div>
+            <div class="step-desc">If WhiskyBase returns 403 / 429 frequently</div>
+          </div>
+          <span class="material-symbols-outlined step-chevron">expand_more</span>
+        </div>
+        <div class="step-body">
+          <div class="alert warning">
+            <span class="material-symbols-outlined">warning</span>
+            <span>WhiskyBase uses Cloudflare. Repeated scraping from a datacenter IP may trigger bans. A residential proxy significantly reduces this.</span>
+          </div>
+          <p>Add to your <code>.env</code> and rebuild:</p>
+          <div class="code-block">
+            <div class="code-header">
+              <span class="code-label">.env</span>
+              <button class="copy-btn" onclick="copyCode(this, 'PROXY_URL=http://user:pass@ip:port')">
+                <span class="material-symbols-outlined">content_copy</span>Copy
+              </button>
+            </div>
+            <pre>PROXY_URL=http://user:pass@ip:port</pre>
+          </div>
+          <div class="code-block">
+            <div class="code-header">
+              <span class="code-label">terminal — apply changes</span>
+              <button class="copy-btn" onclick="copyCode(this, 'docker compose up -d --build')">
+                <span class="material-symbols-outlined">content_copy</span>Copy
+              </button>
+            </div>
+            <pre>docker compose up -d --build</pre>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /maintenance -->
+
+    <footer>
+      <p>WhiskyPriceHub &mdash; Spiritory Price Enrichment Tool</p>
+    </footer>
+
+  </div><!-- /page -->
+
+  <script>
+    function toggleStep(header) {
+      header.parentElement.classList.toggle('open');
+    }
+
+    function copyCode(btn, text) {
+      navigator.clipboard.writeText(text).then(() => {
+        const icon = btn.querySelector('.material-symbols-outlined');
+        const prev = icon.textContent;
+        icon.textContent = 'check';
+        btn.classList.add('copied');
+        setTimeout(() => { icon.textContent = prev; btn.classList.remove('copied'); }, 1800);
+      });
+    }
+
+    function copyFromPre(btn) {
+      const pre = btn.closest('.code-block').querySelector('pre');
+      copyCode(btn, pre.textContent.trim());
+    }
+  </script>
+</body>
+</html>

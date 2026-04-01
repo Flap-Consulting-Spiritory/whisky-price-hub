@@ -1,0 +1,28 @@
+services:
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    volumes:
+      - ./data:/data
+    environment:
+      - DB_PATH=/data/whiskyprices.db
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - PROXY_URL=${PROXY_URL:-}
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    restart: unless-stopped
+    environment:
+      - INTERNAL_API_URL=http://backend:8000
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - AUTH_USERNAME=${AUTH_USERNAME}
+      - AUTH_PASSWORD=${AUTH_PASSWORD}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
