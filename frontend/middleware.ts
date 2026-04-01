@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createHash } from 'crypto'
 
-export function middleware(request: NextRequest) {
-  const expectedUsername = process.env.AUTH_USERNAME
-  const expectedPassword = process.env.AUTH_PASSWORD
+async function computeToken(username: string, password: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const data = encoder.encode(`${username}:${password}`)
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+}
 
-  const expectedToken = createHash('sha256')
-    .update(`${expectedUsername}:${expectedPassword}`)
-    .digest('hex')
+export async function middleware(request: NextRequest) {
+  const expectedUsername = process.env.AUTH_USERNAME ?? ''
+  const expectedPassword = process.env.AUTH_PASSWORD ?? ''
 
+  const expectedToken = await computeToken(expectedUsername, expectedPassword)
   const sessionCookie = request.cookies.get('wph_session')?.value
 
   if (sessionCookie === expectedToken) {
