@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   const expectedPassword = process.env.AUTH_PASSWORD
 
   if (username !== expectedUsername || password !== expectedPassword) {
-    return NextResponse.json({ error: 'Credenciales incorrectas' }, { status: 401 })
+    return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
   }
 
   const token = createHash('sha256')

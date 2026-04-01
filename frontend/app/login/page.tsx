@@ -29,7 +29,7 @@ export default function LoginPage() {
       router.refresh()
     } else {
       const data = await res.json()
-      setError(data.error || 'Credenciales incorrectas')
+      setError(data.error || 'Invalid credentials')
       setShake(true)
       setTimeout(() => setShake(false), 500)
       setLoading(false)
@@ -56,14 +56,14 @@ export default function LoginPage() {
             <h1 className="text-xl font-semibold text-white tracking-tight">
               Whisky<span className="text-[#22c55e]">PriceHub</span>
             </h1>
-            <p className="text-sm text-[#888] mt-1">Introduce tus credenciales para continuar</p>
+            <p className="text-sm text-[#888] mt-1">Enter your credentials to continue</p>
           </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-[#888] uppercase tracking-wider">
-                Usuario
+                Username
               </label>
               <input
                 type="text"
@@ -72,13 +72,13 @@ export default function LoginPage() {
                 autoComplete="username"
                 required
                 className="w-full bg-[#111] border border-[#1a1a1a] rounded-lg px-4 py-2.5 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#22c55e] focus:ring-1 focus:ring-[#22c55e] transition-colors"
-                placeholder="Spiritory"
+                placeholder="Username"
               />
             </div>
 
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-[#888] uppercase tracking-wider">
-                Contraseña
+                Password
               </label>
               <div className="relative">
                 <input
@@ -113,10 +113,10 @@ export default function LoginPage() {
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Entrando…
+                  Signing in…
                 </>
               ) : (
-                'Entrar'
+                'Sign in'
               )}
             </button>
           </form>
