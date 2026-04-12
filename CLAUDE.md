@@ -1,5 +1,7 @@
 # CLAUDE.md
 
+**Repository:** `https://github.com/Flap-Consulting-Spiritory/whisky-price-hub`
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ---
