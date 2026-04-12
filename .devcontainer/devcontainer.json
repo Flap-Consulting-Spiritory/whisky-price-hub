@@ -1,0 +1,12 @@
+{
+  "name": "WhiskyPriceHub",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "20" },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "postCreateCommand": "pip install -r backend/requirements.txt && cd frontend && npm ci",
+  "postStartCommand": "npm install -g @anthropic-ai/claude-code@latest",
+  "containerEnv": { "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}" },
+  "remoteEnv": { "ANTHROPIC_API_KEY": "${containerEnv:ANTHROPIC_API_KEY}" }
+}

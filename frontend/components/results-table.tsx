@@ -160,8 +160,8 @@ function PriceFlagBadge({ flag }: { flag: BottleResult["price_flag"] }) {
     return <span className="text-zinc-600">—</span>;
   }
   const cfg = {
-    wb_higher: { cls: "bg-red-950 text-red-400 border-red-900", label: "WB ↑" },
-    wb_lower:  { cls: "bg-green-950 text-green-400 border-green-900", label: "WB ↓" },
+    wb_higher: { cls: "bg-green-950 text-green-400 border-green-900", label: "WB ↑" },
+    wb_lower:  { cls: "bg-red-950 text-red-400 border-red-900", label: "WB ↓" },
     same:      { cls: "bg-yellow-950 text-yellow-400 border-yellow-900", label: "≈" },
   }[flag];
   if (!cfg) return <span className="text-zinc-600">—</span>;
