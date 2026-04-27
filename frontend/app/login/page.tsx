@@ -54,7 +54,7 @@ export default function LoginPage() {
           {/* Title */}
           <div className="text-center mb-8">
             <h1 className="text-xl font-semibold text-white tracking-tight">
-              Whisky<span className="text-[#22c55e]">PriceHub</span>
+              <span className="text-[#22c55e]">Price</span>Check
             </h1>
             <p className="text-sm text-[#888] mt-1">Enter your credentials to continue</p>
           </div>

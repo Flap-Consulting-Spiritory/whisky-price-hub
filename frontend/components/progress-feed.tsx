@@ -25,25 +25,45 @@ export function ProgressFeed({ jobId, onDone, isCompleted }: ProgressFeedProps) 
   const [connected, setConnected] = useState(false);
   const [finished, setFinished] = useState(false);
   const finishedRef = useRef(false);
+  // Dedup key (ts|msg) for log events that may arrive both via historical
+  // fetch and via the live SSE stream during the handoff window.
+  const seenLogKeys = useRef<Set<string>>(new Set());
+  const historyLoaded = useRef(false);
 
   const addLine = useCallback((text: string, type: LogLine["type"] = "info", ts = "") => {
     setLines((prev) => [...prev, { id: ++_lineId, text, type, ts }]);
   }, []);
 
-  // Historical log fetch for completed jobs
+  // Historical log fetch — runs for BOTH running and completed jobs so a
+  // mid-run refresh shows everything that already happened, not just events
+  // arriving from this point forward.
   useEffect(() => {
-    if (!isCompleted) return;
+    let cancelled = false;
+    historyLoaded.current = false;
+    seenLogKeys.current = new Set();
+
     getJobLogs(jobId)
       .then((logs) => {
+        if (cancelled) return;
         logs.forEach((l) => {
           const t = l.level === "error" ? "error" : l.level === "warn" ? "warn" : "info";
+          seenLogKeys.current.add(`${l.ts}|${l.msg}`);
           addLine(l.msg, t as LogLine["type"], l.ts);
         });
-        setFinished(true);
-        setConnected(false);
+        if (isCompleted) {
+          setFinished(true);
+          setConnected(false);
+        }
       })
-      .catch(() => addLine("Could not load log history.", "warn"));
-  }, [isCompleted, jobId, addLine]);
+      .catch(() => addLine("Could not load log history.", "warn"))
+      .finally(() => {
+        historyLoaded.current = true;
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [jobId, isCompleted, addLine]);
 
   // Live SSE feed for active jobs
   useEffect(() => {
@@ -72,6 +92,9 @@ export function ProgressFeed({ jobId, onDone, isCompleted }: ProgressFeedProps) 
             event.ts
           );
         } else if (event.type === "log") {
+          const key = `${event.ts}|${event.msg}`;
+          if (seenLogKeys.current.has(key)) return;
+          seenLogKeys.current.add(key);
           const t = event.level === "error" ? "error" : event.level === "warn" ? "warn" : "info";
           addLine(event.msg, t, event.ts);
         } else if (event.type === "done") {
@@ -98,7 +121,7 @@ export function ProgressFeed({ jobId, onDone, isCompleted }: ProgressFeedProps) 
     };
 
     return () => es.close();
-  }, [jobId, addLine, onDone]);
+  }, [jobId, addLine, onDone, isCompleted]);
 
   const lineColor: Record<LogLine["type"], string> = {
     info: "text-zinc-400",

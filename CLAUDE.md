@@ -37,11 +37,34 @@ npm install
 NEXT_PUBLIC_API_URL=http://localhost:8001 npm run dev
 ```
 
-### Production URLs
+### Production
 
-- Backend: `https://api-whiskyhub.mentour.lat`
-- Frontend: `https://whiskyhub.mentour.lat`
-- Deployed via Coolify — push to `main` triggers redeploy automatically.
+- Public URL: `https://pricecheck.spiritory.info` (frontend only — backend is NOT exposed publicly)
+- Server: Hetzner VPS, hostname `spiritory-ai`, IP `89.167.24.25`, SSH port `27`
+- SSH alias (already configured in `~/.ssh/config`): **`ssh spiritory-vps`**
+  - User: `flapagency` · Key: `~/.ssh/id_ed25519_spiritory_vps` (key auth, no password needed)
+- Deploy path on server: `/home/flapagency/spiritory/whisky-price-hub/`
+- Reverse proxy: **Nginx** (NOT Coolify) — vhost at `/etc/nginx/sites-enabled/pricecheck.spiritory.info`, TLS via Certbot/Let's Encrypt
+- Containers (host-bound to loopback only):
+  - `whisky-price-hub-frontend-1` → `127.0.0.1:3010 → 3000`
+  - `whisky-price-hub-backend-1` → `127.0.0.1:8010 → 8000`
+- Port mapping is forced via `docker-compose.override.yml` on the server (binds to `127.0.0.1` so only nginx can reach the containers).
+- Production `.env` lives at `/home/flapagency/spiritory/whisky-price-hub/.env`. Current values: `NEXT_PUBLIC_API_URL=https://pricecheck.spiritory.info`, `ALLOWED_ORIGINS=https://pricecheck.spiritory.info` (same-origin — SSE goes via the Next.js proxy, not direct to backend).
+- **No automatic deploy hook.** A `git push origin main` does NOT redeploy. To redeploy:
+  ```bash
+  ssh spiritory-vps
+  cd /home/flapagency/spiritory/whisky-price-hub
+  git pull
+  docker compose up -d --build
+  ```
+  Rebuild the frontend whenever `NEXT_PUBLIC_API_URL` changes (it's baked in at build time).
+- Nginx has a dedicated `location ~ ^/api/jobs/.+/stream$` block with `proxy_buffering off` for SSE. **It still proxies to the frontend container (`:3010`)**, so the Next.js route at `frontend/app/api/jobs/[id]/stream/route.ts` is in the path — that proxy can buffer and is the most likely culprit for SSE "connecting…" symptoms.
+- Useful one-liners:
+  ```bash
+  ssh spiritory-vps "docker logs --tail=200 whisky-price-hub-backend-1"
+  ssh spiritory-vps "docker logs --tail=200 whisky-price-hub-frontend-1"
+  ssh spiritory-vps "sudo nginx -t && sudo systemctl reload nginx"
+  ```
 
 ---
 
@@ -63,7 +86,9 @@ Browser → Next.js API route (proxy) → FastAPI backend → SQLite
 
 ### Why the Proxy Layer
 
-All frontend API routes (`frontend/app/api/**`) are thin Next.js proxies to the FastAPI backend. The `INTERNAL_API_URL` env var is used server-side (container-to-container), while `NEXT_PUBLIC_API_URL` is the public URL used client-side for SSE (EventSource doesn't go through the proxy).
+All frontend API routes (`frontend/app/api/**`) are thin Next.js proxies to the FastAPI backend. `INTERNAL_API_URL` is used server-side (container-to-container, e.g. `http://backend:8000`); `NEXT_PUBLIC_API_URL` is the public URL baked into the client bundle.
+
+`getStreamUrl()` in `frontend/lib/api.ts` points the EventSource at `${NEXT_PUBLIC_API_URL}/api/jobs/{id}/stream`. In production this is the **same origin** as the frontend (`https://pricecheck.spiritory.info`), so SSE goes: browser → nginx → Next.js (`:3010`) → Next.js proxy route → FastAPI (`:8010`). The backend is not reachable cross-origin, so CORS is not the failure mode in production — buffering at the Next.js proxy hop is.
 
 ### Thread Safety — The Critical Pattern
 
@@ -123,8 +148,8 @@ Migrations are handled in `database.py` with `try/except` on `ALTER TABLE` (SQLi
 
 ## Deployment Notes
 
-- No GitHub Actions CI — Coolify hooks directly on `git push origin main`
+- No GitHub Actions CI and **no auto-deploy** — `git push` does not redeploy. Manual `git pull && docker compose up -d --build` on the VPS is required (see Production section above for the SSH alias and path).
 - Backend Dockerfile installs Chromium via `patchright install chromium`
-- `data/` directory must be a persistent volume in Coolify (contains SQLite DB + CSV files)
+- `data/` directory is a host-mounted volume on the VPS (`./data` in the compose file → contains SQLite DB + CSV files); never delete it
 - `PROXY_URL` env var enables residential proxy for Cloudflare bypass (optional)
 - Stale job recovery: on startup, any job in `running`/`pending` state is marked `failed` (handles server restart mid-job)
