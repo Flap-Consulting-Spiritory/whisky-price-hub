@@ -49,6 +49,25 @@ export async function getJobLogs(
   return res.json();
 }
 
+export interface JobProgressEvent {
+  type: "progress";
+  ts: string;
+  wb_id: string;
+  bottle_name: string | null;
+  status: "success" | "failed";
+  avg_price: number | null;
+  currency: string | null;
+  scraped: number;
+  failed: number;
+  total: number;
+}
+
+export async function getJobProgress(jobId: string): Promise<JobProgressEvent[]> {
+  const res = await fetch(`${BASE}/jobs/${jobId}/progress`);
+  if (!res.ok) throw new Error(`Failed to fetch progress: ${res.status}`);
+  return res.json();
+}
+
 export function getStreamUrl(jobId: string): string {
   const backend = process.env.NEXT_PUBLIC_API_URL;
   if (backend) return `${backend}/api/jobs/${jobId}/stream`;

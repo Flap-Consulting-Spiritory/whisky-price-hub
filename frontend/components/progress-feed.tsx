@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { getStreamUrl, getJobLogs } from "@/lib/api";
+import { getStreamUrl, getJobLogs, getJobProgress } from "@/lib/api";
 import type { SSEEvent } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -25,37 +25,89 @@ export function ProgressFeed({ jobId, onDone, isCompleted }: ProgressFeedProps) 
   const [connected, setConnected] = useState(false);
   const [finished, setFinished] = useState(false);
   const finishedRef = useRef(false);
-  // Dedup key (ts|msg) for log events that may arrive both via historical
-  // fetch and via the live SSE stream during the handoff window.
+  // Dedup keys for events that may arrive both via historical fetch and via
+  // the live SSE stream during the handoff window.
   const seenLogKeys = useRef<Set<string>>(new Set());
+  const seenProgressKeys = useRef<Set<string>>(new Set());
   const historyLoaded = useRef(false);
 
   const addLine = useCallback((text: string, type: LogLine["type"] = "info", ts = "") => {
     setLines((prev) => [...prev, { id: ++_lineId, text, type, ts }]);
   }, []);
 
-  // Historical log fetch — runs for BOTH running and completed jobs so a
-  // mid-run refresh shows everything that already happened, not just events
-  // arriving from this point forward.
+  // Historical fetch — runs for BOTH running and completed jobs so a mid-run
+  // refresh restores everything that already happened (logs + per-bottle
+  // progress events), not just events arriving from this point forward.
   useEffect(() => {
     let cancelled = false;
     historyLoaded.current = false;
     seenLogKeys.current = new Set();
+    seenProgressKeys.current = new Set();
 
-    getJobLogs(jobId)
-      .then((logs) => {
+    Promise.all([
+      getJobLogs(jobId).catch(() => null),
+      getJobProgress(jobId).catch(() => null),
+    ])
+      .then(([logs, progress]) => {
         if (cancelled) return;
-        logs.forEach((l) => {
-          const t = l.level === "error" ? "error" : l.level === "warn" ? "warn" : "info";
-          seenLogKeys.current.add(`${l.ts}|${l.msg}`);
-          addLine(l.msg, t as LogLine["type"], l.ts);
+
+        if (logs === null && progress === null) {
+          addLine("Could not load run history.", "warn");
+          return;
+        }
+
+        type Item =
+          | { kind: "log"; ts: string; level: string; msg: string }
+          | {
+              kind: "progress";
+              ts: string;
+              wb_id: string;
+              bottle_name: string | null;
+              status: "success" | "failed";
+              scraped: number;
+              total: number;
+            };
+
+        const items: Item[] = [];
+        (logs ?? []).forEach((l) =>
+          items.push({ kind: "log", ts: l.ts, level: l.level, msg: l.msg })
+        );
+        (progress ?? []).forEach((p) =>
+          items.push({
+            kind: "progress",
+            ts: p.ts,
+            wb_id: p.wb_id,
+            bottle_name: p.bottle_name,
+            status: p.status,
+            scraped: p.scraped,
+            total: p.total,
+          })
+        );
+        items.sort((a, b) => (a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0));
+
+        items.forEach((it) => {
+          if (it.kind === "log") {
+            seenLogKeys.current.add(`${it.ts}|${it.msg}`);
+            const t =
+              it.level === "error" ? "error" : it.level === "warn" ? "warn" : "info";
+            addLine(it.msg, t as LogLine["type"], it.ts);
+          } else {
+            seenProgressKeys.current.add(`${it.ts}|${it.wb_id}`);
+            const icon = it.status === "success" ? "✓" : "✗";
+            const t = it.status === "success" ? "success" : "error";
+            addLine(
+              `[${it.scraped}/${it.total}] ${icon} ${it.bottle_name || it.wb_id} (WB${it.wb_id}) — ${it.status}`,
+              t,
+              it.ts
+            );
+          }
         });
+
         if (isCompleted) {
           setFinished(true);
           setConnected(false);
         }
       })
-      .catch(() => addLine("Could not load log history.", "warn"))
       .finally(() => {
         historyLoaded.current = true;
       });
@@ -83,6 +135,9 @@ export function ProgressFeed({ jobId, onDone, isCompleted }: ProgressFeedProps) 
         const event: SSEEvent = JSON.parse(e.data);
 
         if (event.type === "progress") {
+          const key = `${event.ts}|${event.wb_id}`;
+          if (seenProgressKeys.current.has(key)) return;
+          seenProgressKeys.current.add(key);
           const icon =
             event.status === "success" ? "✓" : event.status === "failed" ? "✗" : "–";
           const t = event.status === "success" ? "success" : event.status === "failed" ? "error" : "warn";

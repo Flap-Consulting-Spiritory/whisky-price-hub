@@ -111,6 +111,59 @@ async def get_job_logs(job_id: str):
         return [{"ts": r["ts"], "level": r["level"], "msg": r["msg"]} for r in rows]
 
 
+@router.get("/{job_id}/progress")
+async def get_job_progress(job_id: str):
+    """Reconstruct chronological progress events from bottle_results.
+
+    Mirrors the shape of live SSE 'progress' events so the frontend can replay
+    the run's per-bottle outcomes after a page refresh. Only includes bottles
+    that were actually scraped (excludes 'skipped_no_id' rows, since those
+    never emitted a progress event live).
+    """
+    async for db in get_db():
+        cursor = await db.execute(
+            """
+            SELECT whiskybase_id, bottle_name, wb_scrape_status,
+                   wb_scraped_at, wb_avg_retail_price, wb_avg_retail_currency
+            FROM bottle_results
+            WHERE job_id = ?
+              AND wb_scrape_status != 'skipped_no_id'
+              AND wb_scraped_at IS NOT NULL
+            ORDER BY id
+            """,
+            (job_id,),
+        )
+        rows = await cursor.fetchall()
+
+    events = []
+    scraped = 0
+    failed = 0
+    total = len(rows)
+    for r in rows:
+        status_db = r["wb_scrape_status"]
+        if status_db in ("success",):
+            scraped += 1
+            status = "success"
+        else:
+            failed += 1
+            status = "failed"
+        ts_iso = r["wb_scraped_at"] or ""
+        ts = ts_iso[11:19] if "T" in ts_iso else ts_iso[:8]
+        events.append({
+            "type": "progress",
+            "ts": ts,
+            "wb_id": r["whiskybase_id"],
+            "bottle_name": r["bottle_name"],
+            "status": status,
+            "avg_price": r["wb_avg_retail_price"],
+            "currency": r["wb_avg_retail_currency"],
+            "scraped": scraped,
+            "failed": failed,
+            "total": total,
+        })
+    return events
+
+
 @router.get("/{job_id}", response_model=JobSummary)
 async def get_job(job_id: str):
     """Get a single job by ID."""
