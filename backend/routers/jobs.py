@@ -115,6 +115,42 @@ async def get_job_logs(job_id: str):
         return [{"ts": r["ts"], "level": r["level"], "msg": r["msg"]} for r in rows]
 
 
+@router.delete("/{job_id}", status_code=204)
+async def delete_job(job_id: str):
+    """Delete a job, its rows, logs, and on-disk CSVs.
+
+    Refuses to delete a job that's still running so we don't leak the
+    background scrape thread or break SSE consumers mid-flight.
+    """
+    async for db in get_db():
+        cursor = await db.execute(
+            "SELECT status, csv_input_path, csv_output_path FROM jobs WHERE id=?",
+            (job_id,),
+        )
+        row = await cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Job not found")
+        if row["status"] in ("running", "pending"):
+            raise HTTPException(
+                status_code=409,
+                detail="Job is still running — wait for it to finish or fail before deleting.",
+            )
+
+        for path in (row["csv_input_path"], row["csv_output_path"]):
+            if path and os.path.exists(path):
+                try:
+                    os.unlink(path)
+                except OSError:
+                    pass  # best-effort; DB delete still proceeds
+
+        await db.execute("DELETE FROM bottle_results WHERE job_id=?", (job_id,))
+        await db.execute("DELETE FROM job_logs WHERE job_id=?", (job_id,))
+        await db.execute("DELETE FROM jobs WHERE id=?", (job_id,))
+        await db.commit()
+
+    return None
+
+
 @router.get("/{job_id}/progress")
 async def get_job_progress(job_id: str):
     """Reconstruct chronological progress events from bottle_results.
