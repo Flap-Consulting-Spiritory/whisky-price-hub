@@ -40,10 +40,9 @@ def _compute_price_flag(client_ask: Optional[float], wb_avg: Optional[float]) ->
         return "no_wb_price"
     if not client_ask:  # None or 0.0 (no active ask price)
         return "no_client_price"
-    diff = (wb_avg - client_ask) / client_ask
-    if diff > 0.01:
+    if wb_avg > client_ask:
         return "wb_higher"
-    if diff < -0.01:
+    if wb_avg < client_ask:
         return "wb_lower"
     return "same"
 

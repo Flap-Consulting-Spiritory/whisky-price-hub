@@ -110,13 +110,15 @@ The input CSV comes from Spiritory's KPI report. Key columns:
 ### Price Flag Logic
 
 `_compute_price_flag()` in `scraper/job_runner.py`:
-- `wb_higher` — WB avg > client ask by >1%
-- `wb_lower` — WB avg < client ask by >1%
-- `same` — within 1%
+- `wb_higher` — WB avg strictly greater than client ask
+- `wb_lower` — WB avg strictly less than client ask
+- `same` — WB avg exactly equal to client ask (floats; rare in practice since avgs are computed)
 - `no_wb_price` — WB returned no avg price (no listings or scrape failed)
 - `no_client_price` — `client_ask` is `None` or `0.0` (inactive ask)
 
-**Critical**: `if not client_ask:` catches both `None` and `0.0` to avoid ZeroDivisionError. Do not change to `if client_ask is None:`.
+The comparison is **absolute** — there is no tolerance band. The previous ±1% band was dropped because the client wants to flag any price gap red/green even when small (per-bottle business decision).
+
+**Critical**: `if not client_ask:` catches both `None` and `0.0` (no active ask). Do not change to `if client_ask is None:`.
 
 ### WB Scraping Strategy (page_scraper.py)
 
