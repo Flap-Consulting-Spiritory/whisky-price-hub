@@ -48,11 +48,22 @@ def _extract_listings(soup: BeautifulSoup) -> tuple[list[float], list[dict]]:
     listing_prices: list[float] = []
     listings_found: list[dict] = []
 
-    for elem in listing_elements[:10]:
+    # Realistic per-bottle whisky range. €15000 covers all but the most extreme
+    # collectibles and blocks placeholder/scam listings (e.g. €99999) and
+    # accidental order-of-magnitude typos.
+    PRICE_MIN = 10.0
+    PRICE_MAX = 15000.0
+
+    for elem in listing_elements:
         elem_text = elem.get_text(separator=' ', strip=True)
 
-        # Extract price
-        price = None
+        # Collect ALL price candidates in this listing element, then pick the
+        # smallest one within the realistic range. This handles shops that
+        # display both the bottle price AND a per-liter price (pro 1 l, /L, …)
+        # — the per-liter price is always larger for <1L bottles, so taking
+        # the minimum reliably yields the bottle price.
+        candidates: list[float] = []
+
         for price_sel in ['.price', '.listing-price', '[data-price]', '.amount', 'strong', 'b']:
             price_elem = (
                 elem.select_one(price_sel)
@@ -61,18 +72,17 @@ def _extract_listings(soup: BeautifulSoup) -> tuple[list[float], list[dict]]:
             )
             if price_elem:
                 parsed = _parse_price(price_elem.get_text(strip=True))
-                if parsed and 1 < parsed < 100000:
-                    price = parsed
-                    break
+                if parsed and PRICE_MIN <= parsed <= PRICE_MAX:
+                    candidates.append(parsed)
 
-        # Fallback: extract any price pattern from text
-        if not price:
-            price_matches = re.findall(r'[\€\$\£]?\s*(\d{1,5}[.,]\d{2})', elem_text)
-            for match in price_matches:
-                parsed = _parse_price(match)
-                if parsed and 1 < parsed < 100000:
-                    price = parsed
-                    break
+        # Always also scan free text — many WhiskyBase listings render the
+        # price as plain text without a dedicated class.
+        for match in re.findall(r'[\€\$\£]?\s*(\d{1,5}[.,]\d{2})', elem_text):
+            parsed = _parse_price(match)
+            if parsed and PRICE_MIN <= parsed <= PRICE_MAX:
+                candidates.append(parsed)
+
+        price = min(candidates) if candidates else None
 
         # Extract shop name
         shop = ''

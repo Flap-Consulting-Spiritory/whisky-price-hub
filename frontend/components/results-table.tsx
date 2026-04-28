@@ -84,14 +84,13 @@ export function ResultsTable({ jobId, refreshKey = 0 }: ResultsTableProps) {
                 <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">WB High</th>
                 <th className="px-3 py-2.5 text-center font-medium text-muted-foreground">vs WB</th>
                 <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">Listings</th>
-                <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Top Shop</th>
+                <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Shops</th>
                 <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Status</th>
               </tr>
             </thead>
             <tbody>
               {results.map((r) => {
                 const listings = parseListings(r.wb_top_listings);
-                const topShop = listings[0];
                 return (
                   <tr key={r.id} className="border-b border-border last:border-b-0 hover:bg-muted/10">
                     <td className="px-3 py-2.5 text-muted-foreground">{r.row_index + 1}</td>
@@ -124,22 +123,33 @@ export function ResultsTable({ jobId, refreshKey = 0 }: ResultsTableProps) {
                     <td className="px-3 py-2.5 text-right text-muted-foreground">
                       {r.wb_listing_count ?? "—"}
                     </td>
-                    <td className="px-3 py-2.5 text-muted-foreground max-w-[140px]">
-                      {topShop ? (
-                        topShop.url ? (
-                          <a
-                            href={topShop.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-accent hover:underline truncate block"
-                            title={topShop.shop}
-                          >
-                            {topShop.shop || "View"}
-                          </a>
-                        ) : (
-                          <span className="truncate block" title={topShop.shop}>{topShop.shop}</span>
-                        )
-                      ) : "—"}
+                    <td className="px-3 py-2.5 text-muted-foreground align-top w-[280px] max-w-[280px]">
+                      {listings.length === 0 ? (
+                        "—"
+                      ) : (
+                        <div className="max-h-32 overflow-y-auto space-y-0.5 pr-1">
+                          {listings.map((l, idx) => (
+                            <div key={idx} className="flex items-baseline justify-between gap-2 leading-tight">
+                              {l.url ? (
+                                <a
+                                  href={l.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-accent hover:underline truncate"
+                                  title={l.shop}
+                                >
+                                  {l.shop || "View"}
+                                </a>
+                              ) : (
+                                <span className="truncate" title={l.shop}>{l.shop || "—"}</span>
+                              )}
+                              <span className="font-mono text-foreground/80 shrink-0 tabular-nums">
+                                {formatPrice(l.price, l.currency || r.wb_avg_retail_currency)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 py-2.5">
                       <ScrapeStatusBadge status={r.wb_scrape_status} error={r.error_message} />
