@@ -11,6 +11,9 @@ export interface Job {
   finished_at: string | null;
   csv_input_path: string;
   csv_output_path: string | null;
+  fx_rate_date: string | null;
+  fx_fetched_at: string | null;
+  fx_rates: string | null; // JSON: {"EUR":1,"GBP":1.176,...}
 }
 
 export interface TopListing {
@@ -18,6 +21,7 @@ export interface TopListing {
   price: number;
   currency: string;
   url: string;
+  price_eur?: number | null;
 }
 
 export interface BottleResult {
@@ -39,6 +43,9 @@ export interface BottleResult {
   error_message: string | null;
   client_ask_price: number | null;
   price_flag: "wb_higher" | "wb_lower" | "same" | "no_wb_price" | "no_client_price" | null;
+  wb_avg_retail_price_eur: number | null;
+  wb_lowest_price_eur: number | null;
+  wb_highest_price_eur: number | null;
 }
 
 export interface ResultsResponse {

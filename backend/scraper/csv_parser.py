@@ -69,6 +69,9 @@ def write_enriched_csv(
         'wb_avg_retail_currency',
         'wb_lowest_price',
         'wb_highest_price',
+        'wb_avg_retail_price_eur',
+        'wb_lowest_price_eur',
+        'wb_highest_price_eur',
         'wb_listing_count',
         'wb_top_listings',
         'wb_scrape_status',
@@ -98,6 +101,9 @@ def write_enriched_csv(
             row['wb_avg_retail_currency'] = result.get('wb_avg_retail_currency', '')
             row['wb_lowest_price'] = result.get('wb_lowest_price', '')
             row['wb_highest_price'] = result.get('wb_highest_price', '')
+            row['wb_avg_retail_price_eur'] = result.get('wb_avg_retail_price_eur', '')
+            row['wb_lowest_price_eur'] = result.get('wb_lowest_price_eur', '')
+            row['wb_highest_price_eur'] = result.get('wb_highest_price_eur', '')
             row['wb_listing_count'] = result.get('wb_listing_count', '')
             row['wb_top_listings'] = result.get('wb_top_listings', '')
             row['wb_scrape_status'] = result.get('wb_scrape_status', 'skipped_no_id')

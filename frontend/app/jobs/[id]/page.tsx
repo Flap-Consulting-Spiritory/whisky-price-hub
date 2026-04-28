@@ -79,6 +79,27 @@ export default function JobPage() {
             {job.started_at && <span>Started {formatDate(job.started_at)}</span>}
             {job.finished_at && <span>Finished {formatDate(job.finished_at)}</span>}
           </div>
+          {job.fx_rate_date && (
+            <div className="text-xs text-muted-foreground pl-6">
+              <span className="font-mono">FX</span>
+              <span className="ml-2">ECB rate {job.fx_rate_date}</span>
+              {job.fx_fetched_at && (
+                <span className="ml-2">· fetched {formatDate(job.fx_fetched_at)}</span>
+              )}
+              {job.fx_rates && (() => {
+                try {
+                  const rates = JSON.parse(job.fx_rates) as Record<string, number>;
+                  const summary = Object.entries(rates)
+                    .filter(([c]) => c !== "EUR")
+                    .map(([c, r]) => `${c}→EUR ${r.toFixed(4)}`)
+                    .join(" · ");
+                  return summary ? <span className="ml-2">· {summary}</span> : null;
+                } catch {
+                  return null;
+                }
+              })()}
+            </div>
+          )}
         </div>
         <DownloadButton jobId={id} enabled={job.status === "completed"} />
       </div>

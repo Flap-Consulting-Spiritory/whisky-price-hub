@@ -15,6 +15,9 @@ class JobSummary(BaseModel):
     started_at: Optional[str] = None
     finished_at: Optional[str] = None
     csv_output_path: Optional[str] = None
+    fx_rate_date: Optional[str] = None
+    fx_fetched_at: Optional[str] = None
+    fx_rates: Optional[str] = None  # JSON: {"EUR":1.0,"GBP":1.176,...}
 
 
 class JobCreateResponse(BaseModel):
@@ -43,6 +46,9 @@ class BottleResult(BaseModel):
     error_message: Optional[str] = None
     client_ask_price: Optional[float] = None
     price_flag: Optional[str] = None
+    wb_avg_retail_price_eur: Optional[float] = None
+    wb_lowest_price_eur: Optional[float] = None
+    wb_highest_price_eur: Optional[float] = None
 
 
 class ResultsResponse(BaseModel):

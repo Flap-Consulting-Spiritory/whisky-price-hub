@@ -16,6 +16,7 @@ router = APIRouter(prefix="/api/jobs", tags=["results"])
 
 
 def _row_to_result(row) -> dict:
+    keys = row.keys() if hasattr(row, "keys") else []
     return {
         "id": row["id"],
         "job_id": row["job_id"],
@@ -35,6 +36,9 @@ def _row_to_result(row) -> dict:
         "error_message": row["error_message"],
         "client_ask_price": row["client_ask_price"],
         "price_flag": row["price_flag"],
+        "wb_avg_retail_price_eur": row["wb_avg_retail_price_eur"] if "wb_avg_retail_price_eur" in keys else None,
+        "wb_lowest_price_eur": row["wb_lowest_price_eur"] if "wb_lowest_price_eur" in keys else None,
+        "wb_highest_price_eur": row["wb_highest_price_eur"] if "wb_highest_price_eur" in keys else None,
     }
 
 

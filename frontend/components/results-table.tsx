@@ -79,9 +79,10 @@ export function ResultsTable({ jobId, refreshKey = 0 }: ResultsTableProps) {
                 <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Bottle</th>
                 <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">WB ID</th>
                 <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">Client Ask</th>
-                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">WB Avg</th>
-                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">WB Low</th>
-                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">WB High</th>
+                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">WB Avg (EUR)</th>
+                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">WB Avg (orig)</th>
+                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">WB Low (EUR)</th>
+                <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">WB High (EUR)</th>
                 <th className="px-3 py-2.5 text-center font-medium text-muted-foreground">vs WB</th>
                 <th className="px-3 py-2.5 text-right font-medium text-muted-foreground">Listings</th>
                 <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Shops</th>
@@ -109,13 +110,16 @@ export function ResultsTable({ jobId, refreshKey = 0 }: ResultsTableProps) {
                       {r.client_ask_price != null ? formatPrice(r.client_ask_price, r.wb_avg_retail_currency ?? "EUR") : "—"}
                     </td>
                     <td className="px-3 py-2.5 text-right font-medium text-foreground">
+                      {formatPrice(r.wb_avg_retail_price_eur, "EUR")}
+                    </td>
+                    <td className="px-3 py-2.5 text-right text-muted-foreground">
                       {formatPrice(r.wb_avg_retail_price, r.wb_avg_retail_currency)}
                     </td>
                     <td className="px-3 py-2.5 text-right text-muted-foreground">
-                      {formatPrice(r.wb_lowest_price, r.wb_avg_retail_currency)}
+                      {formatPrice(r.wb_lowest_price_eur, "EUR")}
                     </td>
                     <td className="px-3 py-2.5 text-right text-muted-foreground">
-                      {formatPrice(r.wb_highest_price, r.wb_avg_retail_currency)}
+                      {formatPrice(r.wb_highest_price_eur, "EUR")}
                     </td>
                     <td className="px-3 py-2.5 text-center">
                       <PriceFlagBadge flag={r.price_flag} />
@@ -143,8 +147,13 @@ export function ResultsTable({ jobId, refreshKey = 0 }: ResultsTableProps) {
                               ) : (
                                 <span className="truncate" title={l.shop}>{l.shop || "—"}</span>
                               )}
-                              <span className="font-mono text-foreground/80 shrink-0 tabular-nums">
-                                {formatPrice(l.price, l.currency || r.wb_avg_retail_currency)}
+                              <span className="font-mono text-foreground/80 shrink-0 tabular-nums text-right">
+                                <span>{formatPrice(l.price, l.currency || r.wb_avg_retail_currency)}</span>
+                                {l.price_eur != null && (l.currency || "EUR").toUpperCase() !== "EUR" && (
+                                  <span className="block text-[0.65rem] text-muted-foreground">
+                                    ≈ {formatPrice(l.price_eur, "EUR")}
+                                  </span>
+                                )}
                               </span>
                             </div>
                           ))}

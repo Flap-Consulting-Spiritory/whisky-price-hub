@@ -15,6 +15,7 @@ from scraper.exceptions import ScrapeBanException, ScrapeHardBanException
 from scraper.page_scraper import scrape_bottle_prices
 from scraper.browser_manager import close_session
 from scraper.csv_parser import parse_csv, write_enriched_csv
+from scraper.fx import fetch_eur_rates, to_eur
 from utils.jitter import random_delay
 from database import DB_PATH
 from jobs_store import emit, remove_queue
@@ -95,6 +96,28 @@ def run_job(job_id: str) -> None:
 
         _emit("log", level="info", msg=f"[Job] Starting: {original_filename}")
 
+        # Fetch FX snapshot once per run (ECB via frankfurter.app). All bottles
+        # in this job convert non-EUR prices using the same snapshot so the
+        # aggregate avg/low/high are internally consistent.
+        fx_rates_to_eur = {"EUR": 1.0}
+        try:
+            fx = fetch_eur_rates()
+            fx_rates_to_eur = fx["rates_to_eur"]
+            conn.execute(
+                "UPDATE jobs SET fx_rate_date=?, fx_fetched_at=?, fx_rates=? WHERE id=?",
+                (fx["date"], fx["fetched_at"], json.dumps(fx_rates_to_eur), job_id),
+            )
+            conn.commit()
+            rate_summary = ", ".join(
+                f"{c}→EUR={r:.4f}"
+                for c, r in fx_rates_to_eur.items() if c != "EUR"
+            )
+            _emit("log", level="info",
+                  msg=f"[FX] ECB rates {fx['date']} fetched at {fx['fetched_at']}: {rate_summary}")
+        except Exception as exc:
+            _emit("log", level="warn",
+                  msg=f"[FX] Could not fetch ECB rates ({exc}); non-EUR prices will not be converted.")
+
         # Parse CSV
         bottles = parse_csv(csv_input_path)
         total = len(bottles)
@@ -165,18 +188,55 @@ def run_job(job_id: str) -> None:
                     if last_exc is not None:
                         raise last_exc
 
-                    # Save to DB
+                    # Convert each listing to EUR and recompute aggregates in
+                    # EUR so cross-currency comparison and averaging are
+                    # consistent.
+                    raw_listings = price_data.get('top_listings', []) or []
+                    listings_with_eur = []
+                    eur_prices = []
+                    for l in raw_listings:
+                        cur = (l.get('currency') or 'EUR').upper()
+                        eur_val = to_eur(l.get('price'), cur, fx_rates_to_eur)
+                        listings_with_eur.append({**l, "price_eur": eur_val})
+                        if eur_val is not None:
+                            eur_prices.append(eur_val)
+
+                    if eur_prices:
+                        avg_eur = round(sum(eur_prices) / len(eur_prices), 2)
+                        low_eur = min(eur_prices)
+                        high_eur = max(eur_prices)
+                    else:
+                        avg_eur = to_eur(
+                            price_data.get('avg_retail_price'),
+                            price_data.get('avg_retail_currency', 'EUR'),
+                            fx_rates_to_eur,
+                        )
+                        low_eur = to_eur(
+                            price_data.get('lowest_price'),
+                            price_data.get('avg_retail_currency', 'EUR'),
+                            fx_rates_to_eur,
+                        )
+                        high_eur = to_eur(
+                            price_data.get('highest_price'),
+                            price_data.get('avg_retail_currency', 'EUR'),
+                            fx_rates_to_eur,
+                        )
+
+                    # Save to DB. price_flag now compares against the EUR-
+                    # normalized avg so a GBP avg vs an EUR client_ask is
+                    # apples-to-apples.
                     price_flag = _compute_price_flag(
                         bottle.get('client_ask_price'),
-                        price_data.get('avg_retail_price'),
+                        avg_eur if avg_eur is not None else price_data.get('avg_retail_price'),
                     )
                     conn.execute("""
                         INSERT INTO bottle_results
                         (job_id, row_index, bottle_id, whiskybase_id, bottle_name, brand_name,
                          wb_avg_retail_price, wb_avg_retail_currency,
                          wb_lowest_price, wb_highest_price, wb_listing_count, wb_top_listings,
-                         wb_scrape_status, wb_scraped_at, client_ask_price, price_flag)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'success', ?, ?, ?)
+                         wb_scrape_status, wb_scraped_at, client_ask_price, price_flag,
+                         wb_avg_retail_price_eur, wb_lowest_price_eur, wb_highest_price_eur)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'success', ?, ?, ?, ?, ?, ?)
                     """, (
                         job_id,
                         bottle['row_index'],
@@ -189,10 +249,13 @@ def run_job(job_id: str) -> None:
                         price_data.get('lowest_price'),
                         price_data.get('highest_price'),
                         price_data.get('listing_count', 0),
-                        json.dumps(price_data.get('top_listings', [])),
+                        json.dumps(listings_with_eur),
                         _now_iso(),
                         bottle.get('client_ask_price'),
                         price_flag,
+                        avg_eur,
+                        low_eur,
+                        high_eur,
                     ))
                     scraped_count += 1
                     conn.execute(

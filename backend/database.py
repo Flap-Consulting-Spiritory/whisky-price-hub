@@ -71,6 +71,12 @@ async def init_db() -> None:
         for col_sql in [
             "ALTER TABLE bottle_results ADD COLUMN client_ask_price REAL",
             "ALTER TABLE bottle_results ADD COLUMN price_flag TEXT",
+            "ALTER TABLE bottle_results ADD COLUMN wb_avg_retail_price_eur REAL",
+            "ALTER TABLE bottle_results ADD COLUMN wb_lowest_price_eur REAL",
+            "ALTER TABLE bottle_results ADD COLUMN wb_highest_price_eur REAL",
+            "ALTER TABLE jobs ADD COLUMN fx_rate_date TEXT",
+            "ALTER TABLE jobs ADD COLUMN fx_fetched_at TEXT",
+            "ALTER TABLE jobs ADD COLUMN fx_rates TEXT",
         ]:
             try:
                 await db.execute(col_sql)

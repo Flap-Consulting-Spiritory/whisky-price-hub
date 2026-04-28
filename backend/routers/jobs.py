@@ -27,6 +27,7 @@ _executor = ThreadPoolExecutor(max_workers=1)  # patchright is process-scoped
 
 
 def _row_to_summary(row) -> dict:
+    keys = row.keys() if hasattr(row, "keys") else []
     return {
         "id": row["id"],
         "status": row["status"],
@@ -39,6 +40,9 @@ def _row_to_summary(row) -> dict:
         "started_at": row["started_at"],
         "finished_at": row["finished_at"],
         "csv_output_path": row["csv_output_path"],
+        "fx_rate_date": row["fx_rate_date"] if "fx_rate_date" in keys else None,
+        "fx_fetched_at": row["fx_fetched_at"] if "fx_fetched_at" in keys else None,
+        "fx_rates": row["fx_rates"] if "fx_rates" in keys else None,
     }
 
 
