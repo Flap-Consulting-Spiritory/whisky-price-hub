@@ -57,15 +57,25 @@ async def startup():
     jobs_store.set_loop(loop)
     print("[WhiskyPriceHub] Database initialized. Event loop stored.")
     # Recover stale jobs: any job still 'running' or 'pending' at startup was
-    # interrupted by a server restart — mark them as failed so they don't block.
+    # interrupted by a server restart — mark them as failed and reconcile the
+    # failed counter so it equals total - scraped - skipped (otherwise the UI
+    # shows "Failed" with failed=0, which is confusing).
     from database import get_db
     async for db in get_db():
-        await db.execute(
-            "UPDATE jobs SET status='failed', finished_at=datetime('now') "
+        cursor = await db.execute(
+            "SELECT id, total_bottles, scraped, skipped FROM jobs "
             "WHERE status IN ('running', 'pending')"
         )
+        stale = await cursor.fetchall()
+        for row in stale:
+            interrupted = max(0, (row["total_bottles"] or 0) - (row["scraped"] or 0) - (row["skipped"] or 0))
+            await db.execute(
+                "UPDATE jobs SET status='failed', finished_at=datetime('now'), failed=? "
+                "WHERE id=?",
+                (interrupted, row["id"]),
+            )
         await db.commit()
-    print("[WhiskyPriceHub] Stale running/pending jobs marked as failed.")
+    print(f"[WhiskyPriceHub] Stale running/pending jobs marked failed ({len(stale)}).")
 
 
 @app.get("/health")

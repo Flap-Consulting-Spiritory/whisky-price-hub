@@ -107,7 +107,7 @@ export function ResultsTable({ jobId, refreshKey = 0 }: ResultsTableProps) {
                       {r.whiskybase_id ? `WB${r.whiskybase_id}` : "—"}
                     </td>
                     <td className="px-3 py-2.5 text-right text-muted-foreground">
-                      {r.client_ask_price != null ? formatPrice(r.client_ask_price, r.wb_avg_retail_currency ?? "EUR") : "—"}
+                      {r.client_ask_price != null ? formatPrice(r.client_ask_price, "EUR") : "—"}
                     </td>
                     <td className="px-3 py-2.5 text-right font-medium text-foreground">
                       {formatPrice(r.wb_avg_retail_price_eur, "EUR")}
