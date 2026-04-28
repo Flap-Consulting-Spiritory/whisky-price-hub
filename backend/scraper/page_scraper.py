@@ -66,6 +66,22 @@ def scrape_bottle_prices(whiskybase_id: str, emit_fn=None) -> dict:
         page.evaluate(f"window.scrollBy(0, {random.randint(400, 800)})")
         time.sleep(random.uniform(0.5, 1.5))
 
+        # Wait until at least one shoplink anchor is in the DOM. WhiskyBase
+        # renders listings lazily after the initial HTML; without this we
+        # sometimes serialized the page before any listings attached and
+        # ended up with listing_count=0 for bottles that actually have shops.
+        # If genuinely no listings exist, the timeout is the cost of being
+        # sure — we still proceed.
+        try:
+            page.wait_for_selector(
+                'a[href*="/whiskies/shoplink/"]',
+                timeout=10000,
+                state="attached",
+            )
+            time.sleep(random.uniform(0.3, 0.8))
+        except Exception:
+            pass
+
         html = page.content()
         page.close()
 
