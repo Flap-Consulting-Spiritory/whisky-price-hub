@@ -19,6 +19,20 @@ _LISTING_SELECTORS = [
     '.price-listing',
 ]
 
+# WhiskyBase shoplink URLs. The canonical user-facing form is
+# /whiskies/shoplink/<id> — that one performs a tracked redirect to the shop.
+# Some <a> tags on the page point to internal AJAX sub-paths (e.g.
+# /bottle-sidebar) that 404 when opened directly. Strip the sub-path so the
+# saved URL is always clickable.
+_SHOPLINK_CANONICAL_RE = re.compile(r'^(https?://[^/]+/whiskies/shoplink/\d+)')
+
+
+def _canonicalize_shoplink(url: str) -> str:
+    if not url:
+        return url
+    m = _SHOPLINK_CANONICAL_RE.match(url)
+    return m.group(1) if m else url
+
 
 def _extract_listings(soup: BeautifulSoup) -> tuple[list[float], list[dict]]:
     """
@@ -107,6 +121,7 @@ def _extract_listings(soup: BeautifulSoup) -> tuple[list[float], list[dict]]:
                 listing_url = href
             elif href.startswith('/'):
                 listing_url = f"https://www.whiskybase.com{href}"
+        listing_url = _canonicalize_shoplink(listing_url)
 
         currency = _parse_currency(elem_text)
 
