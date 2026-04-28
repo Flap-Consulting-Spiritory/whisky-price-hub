@@ -39,6 +39,14 @@ export default function JobPage() {
     return () => clearInterval(interval);
   }, [fetchJob]);
 
+  // Whenever the job's progress counters or status change (each poll), bump
+  // the ResultsTable's refresh key so it refetches mid-run instead of only
+  // updating once the SSE 'done' event arrives.
+  useEffect(() => {
+    if (!job) return;
+    setRefreshKey((k) => k + 1);
+  }, [job?.scraped, job?.failed, job?.skipped, job?.status]);
+
   const handleDone = useCallback(() => {
     fetchJob();
     setRefreshKey((k) => k + 1);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getResults } from "@/lib/api";
 import type { BottleResult, TopListing } from "@/lib/types";
 import { formatPrice, cn } from "@/lib/utils";
@@ -24,14 +24,18 @@ export function ResultsTable({ jobId, refreshKey = 0 }: ResultsTableProps) {
   const [results, setResults] = useState<BottleResult[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const hasLoadedOnce = useRef(false);
 
   useEffect(() => {
-    setLoading(true);
+    // Only show the spinner before we've ever rendered rows. Subsequent
+    // polls during a run refetch silently so the table doesn't flicker.
+    if (!hasLoadedOnce.current) setLoading(true);
     const statusParam = tab === "all" ? undefined : tab;
     getResults(jobId, statusParam)
       .then((data) => {
         setResults(data.items);
         setTotal(data.total);
+        hasLoadedOnce.current = true;
       })
       .catch(() => {})
       .finally(() => setLoading(false));
